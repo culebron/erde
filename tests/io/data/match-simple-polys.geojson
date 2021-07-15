@@ -1,0 +1,10 @@
+{
+"type": "FeatureCollection",
+"name": "match-simple-polys",
+"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
+"features": [
+{ "type": "Feature", "properties": { "name": "X" }, "geometry": { "type": "Polygon", "coordinates": [ [ [ 82.8719519, 55.1110469 ], [ 83.140717, 55.1102704 ], [ 83.1452417, 55.0838631 ], [ 82.8701421, 55.0828271 ], [ 82.8719519, 55.1110469 ] ] ] } },
+{ "type": "Feature", "properties": { "name": "Y" }, "geometry": { "type": "Polygon", "coordinates": [ [ [ 82.8724044, 54.9172512 ], [ 83.1262381, 54.9175113 ], [ 83.127143, 54.8855115 ], [ 82.8728569, 54.8847307 ], [ 82.8724044, 54.9172512 ] ] ] } },
+{ "type": "Feature", "properties": { "name": "Z" }, "geometry": { "type": "Polygon", "coordinates": [ [ [ 83.253179, 54.964816 ], [ 83.246475, 55.03184 ], [ 83.381521, 55.03184 ], [ 83.383436, 54.969215 ], [ 83.253179, 54.964816 ] ] ] } }
+]
+}

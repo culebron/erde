@@ -9,9 +9,13 @@ import time
 import yaargh
 
 
-ENV_VARS = {'IPDB': 0, 'PUDB': 0, 'ECACHE': None}
-IPDB, PUDB, ECACHE = [os.environ.get(k, v) for k, v in ENV_VARS.items()]
+ENV_VARS = {'ELOG': 0, 'IPDB': 0, 'PUDB': 0, 'ECACHE': None, 'ESYNC': 0}
+ELOG, IPDB, PUDB, ECACHE, ESYNC = [os.environ.get(k, v) for k, v in ENV_VARS.items()]
 
+
+def dprint(*args, **kwargs):
+	if ELOG == '1':
+		print(*args, **kwargs)
 
 def _read(*args, **kwargs):
 	from .io import read_file

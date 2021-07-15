@@ -193,3 +193,7 @@ def write_file(df, path, *args, **kwargs):
 			return globals()[f'write_{fmt}'](df, path, match, *args, **kwargs)
 
 	raise ValueError(f'{path}: file format not recognized')
+
+
+def read_stream(path, chunk_size=1, pbar=False, sync=True):
+	return []  # TODO: implement
