@@ -31,7 +31,7 @@ setup(
     author_email=pkg['__email__'],
     description=pkg['__description__'],
     license=pkg['__license__'],
-    long_description=open('README.md').read(),
+    long_description="",  # open('README.md').read(),
     name=pkg['__package_name__'],
     url=pkg['__url__'],
     version=pkg['__version__'],
