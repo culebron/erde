@@ -6,3 +6,4 @@ pygeos
 pymongo
 pyproj
 tqdm
+sqlalchemy
