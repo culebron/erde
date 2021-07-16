@@ -66,9 +66,11 @@ class GpkgReader(BaseReader):
 		# чтение файла через fiona быстрее, чем gpd.read_file с отступом
 		# потому что на больших файлах на каждый кусок приходится пропускать
 		# много строк каждый раз
+		#print('fiona.open(', self.source, 'layer=', self.layername, 'driver=', self.fiona_driver, '**', self.kwargs, ')')
 		with fiona.open(self.source, layer=self.layername, driver=self.fiona_driver, **self.kwargs) as self._handler:
 			for geometry_filter in self.geometry_filter_pbar:
 				self._stopped_iteration = False
+				#print('_handler.filter(mask=', (geometry_filter.__geo_interface__ if geometry_filter is not None else None), ')')
 				iterator = self._handler.filter(mask=geometry_filter.__geo_interface__ if geometry_filter is not None else None)
 				with self._pbar(desc=f'rows in {self.source}', total=self.total_rows) as reader_bar:
 					while not self._stopped_iteration:
@@ -97,6 +99,7 @@ class GpkgReader(BaseReader):
 						if self.emergency_stop.value: return
 						yield gdf
 						reader_bar.update(len(gdf))
+		#print('fiona handler closed')
 
 	def stats(self):
 		# make sqlite connection and get min, max, avg.
