@@ -34,7 +34,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install flake8 pytest
-        sudo apt install libgdal-dev
+        sudo apt-get install libgdal-dev -y
         pip install fiona --no-binary fiona
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
     - name: install erde
