@@ -1,1 +1,0 @@
-pytest $@ --cov=erde tests/ --pdb --pdbcls=IPython.terminal.debugger:Pdb && coverage html

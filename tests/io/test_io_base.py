@@ -4,14 +4,14 @@ from shapely.geometry import Point, LineString, Polygon
 from unittest.mock import patch, Mock
 
 
-def d(s): return 'tests/io/data/' + s
+d = 'tests/io/data/'
 
 def test_base_reader():
 	from erde.io.base import BaseReader
 
 	# (self, source, geometry_filter=None, chunk_size: int = 10_000, sync: bool = False, pbar: bool = True, queue_size=10, **kwargs)
 
-	df = gpd.read_file(d('polygons.gpkg'))
+	df = gpd.read_file(d + 'polygons.gpkg')
 	s = 10
 	dfs = [df[i:i + s] for i in range(0, len(df), s)]
 	gen_obj = (i for i in df.geometry.values)

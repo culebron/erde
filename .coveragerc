@@ -1,0 +1,6 @@
+[run]
+omit =
+	erde/_version.py
+	erde/__version__.py
+	erde/__pkg__.py
+

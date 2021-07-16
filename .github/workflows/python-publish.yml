@@ -7,7 +7,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.8]  # [3.6, 3.7, 3.8, 3.9]
+        python-version: [3.6, 3.7, 3.8, 3.9]
 
     services:
       postgres:
@@ -37,8 +37,7 @@ jobs:
         python -m pip install --upgrade pip
         pip install flake8 pytest
         sudo apt-get install libgdal-dev -y
-        pip install pygeos --no-binary pygeos
-        pip install shapely --no-binary shapely
+        pip install shapely pygeos --no-binary shapely --no-binary pygeos
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
     - name: install erde
       run: |
