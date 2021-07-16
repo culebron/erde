@@ -138,13 +138,10 @@ class BaseReader:
 			if self._sync or not self._entered_context:  # if this object is not used as context manager, run in sync mode
 				self._reader = self._read_sync()
 			else:
-				self.background_process.start()  # start the process here to avoid creating the
+				self.background_process.start()  # start the process only here, in case nothing is read from the stream
 				self._reader = self._read_parallel()
 
-		try:
-			return next(self._reader)
-		except StopIteration:
-			raise
+		return next(self._reader)
 
 	# background process
 	def _worker(self):
