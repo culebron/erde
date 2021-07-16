@@ -1,0 +1,1 @@
+pytest $@ --pdb --pdbcls=IPython.terminal.debugger:Pdb 

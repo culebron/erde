@@ -33,8 +33,9 @@ def test_bad_file():
 	not_a_gpkg = '/tmp/not-a-gpkg.gpkg'
 	for s in (True, False):
 		with pytest.raises(RuntimeError):
-			dr.open_read('/tmp/not-existing-file.gpkg', sync=s)
+			dr.open_read('/tmp/not-a-gpkg-2.gpkg', sync=s)
 
+		# empty file
 		with open(not_a_gpkg, 'w') as f:
 			f.write('')
 
@@ -54,9 +55,11 @@ def test_exception_in_read():
 		reader = TmpReader(points_file, sync=s, chunk_size=10)
 		assert len(next(reader)) == 10
 		assert len(next(reader)) == 10
-			
+
 		with pytest.raises(RuntimeError):
 			next(reader)
+
+		reader._handler.close()
 
 def test_geometry_filter():
 	for s in (True, False):
@@ -66,15 +69,12 @@ def test_geometry_filter():
 
 		expected_names = set('ACDFGI')
 
-		for test_filter in (filter_source, filter_df, filter_geom):
+		for test_filter in (filter_source, filter_df, filter_geom, None):
 			stream = dr.open_read(match_points, test_filter, chunk_size=100_000, sync=s)
 			for df in stream:
 				assert len(df) > 0
-				assert set(df['name'].tolist()).issubset(expected_names)
-
-		for df in dr.open_read(d('match-points.gpkg'), chunk_size=100_000, sync=s):
-			# should not crash with geometry filter == None
-			assert len(df) > 0
+				if test_filter is not None:  # when None, the set is bigger than expected_names
+					assert set(df['name'].tolist()).issubset(expected_names)
 
 		sleep(1)
 
@@ -98,13 +98,17 @@ def test_write_error():
 			os.unlink(tmp_points)
 		except:
 			pass
+
 		with pytest.raises(RuntimeError):
 			with dr.open_write(tmp_points, sync=s) as w:
-				for i, df in enumerate(dr.open_read(points_file, chunk_size=10, sync=s)):
+				rd = dr.open_read(points_file, chunk_size=10, sync=s)
+				for i, df in enumerate(rd):
 					if i == 2:
 						raise RuntimeError('planned exception')
 
 					w(df)
+
+		rd._handler.close()
 
 		# file layer does not exist
 		sleep(1)
