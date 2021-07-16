@@ -37,7 +37,8 @@ jobs:
         python -m pip install --upgrade pip
         pip install flake8 pytest
         sudo apt-get install libgdal-dev -y
-        pip install shapely pygeos --no-binary shapely --no-binary pygeos
+        pip install pygeos --no-binary pygeos
+        pip install shapely --no-binary shapely
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
     - name: install erde
       run: |
