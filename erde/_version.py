@@ -17,7 +17,7 @@ def git_is_master(path=None):
 
 
 def git_last_version(path=None):
-    major, minor, patch, rest = parse_tag(shell_exec('git describe --tags', cwd=path))
+    major, minor, patch, rest = parse_tag(shell_exec('git describe --tags --always', cwd=path))
     return major, minor, patch, rest
 
 
