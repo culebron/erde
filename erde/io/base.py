@@ -105,9 +105,7 @@ class BaseReader:
 
 	def __exit__(self, exc_type, exc_value, exc_trace):
 		dprint('base reader __EXIT__')
-		if self._sync:
-			self._close_handler()
-		else:
+		if not self._sync:
 			dprint('base reader: exiting async writer')
 			if exc_type is not None:
 				dprint('base reader exit: sending emergency stop')
@@ -120,7 +118,8 @@ class BaseReader:
 			else:
 				dprint('base reader: normal exit')
 
-			self.background_process.join()
+			if self.background_process.is_alive():
+				self.background_process.join()
 			sleep(0)
 			dprint('base reader: exit background process joined')
 		dprint('base reader: exit done')
@@ -253,9 +252,9 @@ class BaseWriter:
 				dprint('base writer exit: joining background process')
 
 
-			self.background_process.join()
 			self.in_q.close()
 			self.err_q.close()
+			self.background_process.join()
 			sleep(0)
 		dprint('base writer: exit done')
 
