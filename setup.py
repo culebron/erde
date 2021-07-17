@@ -41,5 +41,5 @@ setup(
     packages=find_packages(exclude=['tests.py']),
     entry_points={'console_scripts': []},
     install_requires=requirements,
-    tests_require=['pytest']
+    tests_require=['pytest', 'xlrd', 'psycopg2', 'openpyxl']
 )

@@ -7,5 +7,3 @@ pymongo
 pyproj
 tqdm
 sqlalchemy
-psycopg2
-openpyxl
