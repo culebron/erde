@@ -8,10 +8,10 @@ import os
 import pytest
 
 
-def d(s): return 'tests/io/data/' + s
+d = 'tests/io/data/'
 
-points_file = d('blocks-points.gpkg')
-match_points = d('match-points.gpkg')
+points_file = d + 'blocks-points.gpkg'
+match_points = d + 'match-points.gpkg'
 
 
 def silentremove(filename):
@@ -63,7 +63,7 @@ def test_exception_in_read():
 
 def test_geometry_filter():
 	for s in (True, False):
-		filter_source = d('match-simple-polys.geojson')
+		filter_source = d + 'match-simple-polys.geojson'
 		filter_df = read_file(filter_source)
 		filter_geom = filter_df['geometry'].unary_union
 
@@ -85,10 +85,15 @@ def test_write():
 	for s in (True, False):
 		old_df = read_file(match_points)
 
+		if os.path.exists(tmp_points):
+			os.unlink(tmp_points)
+
+		assert not os.path.exists(tmp_points), f"could not delete file {tmp_points} before test"
 		with dr.open_write(tmp_points, sync=s) as w:
-			for df in dr.open_read(match_points, chunk_size=10, sync=s):
+			for df in dr.open_read(match_points, chunk_size=10):
 				w(df)
 
+		assert os.path.exists(tmp_points), f"file {tmp_points} does not exist, but should have been created"
 		new_df = read_file(tmp_points)
 		assert sorted(new_df['name'].tolist()) == sorted(old_df['name'].tolist())
 

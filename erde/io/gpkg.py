@@ -66,11 +66,9 @@ class GpkgReader(BaseReader):
 		# чтение файла через fiona быстрее, чем gpd.read_file с отступом
 		# потому что на больших файлах на каждый кусок приходится пропускать
 		# много строк каждый раз
-		#print('fiona.open(', self.source, 'layer=', self.layername, 'driver=', self.fiona_driver, '**', self.kwargs, ')')
 		with fiona.open(self.source, layer=self.layername, driver=self.fiona_driver, **self.kwargs) as self._handler:
 			for geometry_filter in self.geometry_filter_pbar:
 				self._stopped_iteration = False
-				#print('_handler.filter(mask=', (geometry_filter.__geo_interface__ if geometry_filter is not None else None), ')')
 				iterator = self._handler.filter(mask=geometry_filter.__geo_interface__ if geometry_filter is not None else None)
 				with self._pbar(desc=f'rows in {self.source}', total=self.total_rows) as reader_bar:
 					while not self._stopped_iteration:
@@ -99,7 +97,6 @@ class GpkgReader(BaseReader):
 						if self.emergency_stop.value: return
 						yield gdf
 						reader_bar.update(len(gdf))
-		#print('fiona handler closed')
 
 	def stats(self):
 		# make sqlite connection and get min, max, avg.
@@ -136,21 +133,17 @@ class GpkgWriter(BaseWriter):
 		if df is None or len(df) == 0:
 			return
 
-		sleep(0)
 		#dicts_to_json(df, inplace=True)
 		dprint('made dicts')
-		sleep(0)
 		self._open_handler(df)
-		dprint('checked handler')
-		sleep(0)
-		dprint('writing records')
+		dprint(f'checked handler, writing {len(df)} records')
 		self._handler.writerecords(df.iterfeatures())
-		sleep(0)
 		dprint('records done')
 		# replace by df.to_file(mode='a') later
 
 	def _open_handler(self, df=None):
 		if self._handler is not None:
+			dprint('not opening handler')
 			return
 
 		import fiona
@@ -169,10 +162,12 @@ class GpkgWriter(BaseWriter):
 		crs_ = None
 		if df is not None and df.crs is not None:
 			crs_ = df.crs.to_string()
+		dprint(f'opening fiona handler, target {self.target}')
 		self._handler = fiona.open(self.target, 'w', layer=self.layername, crs=crs_, driver=self.fiona_driver, schema=schema)
 
 	def _close_handler(self):
 		self._open_handler()
+		dprint('closing handler')
 		self._handler.close()
 		self._handler = None
 
