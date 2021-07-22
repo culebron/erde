@@ -133,6 +133,9 @@ class BaseReader:
 
 	# main process
 	def __next__(self):
+		if self.__class__ == BaseReader:
+			raise NotImplementedError('this is a BaseReader object, it should not be used directly')
+
 		if self._reader is None:
 			if self._sync or not self._entered_context:  # if this object is not used as context manager, run in sync mode
 				self._reader = self._read_sync()
@@ -147,15 +150,15 @@ class BaseReader:
 		try:
 			for i, gdf in enumerate(self._read_sync()):
 				dprint('reader worker: reading done')
-				if self.emergency_stop.value:
+				if self.emergency_stop.value: # check for stop after read & before put
 					dprint('reader worker: emergency')
 					break
 				dprint('reader worker: putting to q')
 				sleep(0)
 				self.out_q.put(gdf)
 				sleep(0)  # required to yield to queue's thread!!!
-				dprint('reader worker: q done')
-				if self.emergency_stop.value:
+				dprint('reader worker: put to q done')
+				if self.emergency_stop.value: # check for stop before read, bc it can take a while
 					dprint('reader worker: emergency')
 					break
 			else:
@@ -173,21 +176,18 @@ class BaseReader:
 	# main process
 	def _read_parallel(self):
 		while True:
-			try:
-				if self.emergency_stop.value: break
-				sleep(0)
-				item = self.out_q.get()
-				sleep(0)
-				if self.emergency_stop.value or item is None: break
-				yield item
-				if self.emergency_stop.value: break
-			except Exception:
-				self.emergency_stop.value = True
+			if self.emergency_stop.value: break
+			sleep(0)
+			item = self.out_q.get()
+			sleep(0)
+			if self.emergency_stop.value or item is None: break
+			yield item
+			if self.emergency_stop.value: break
 
 		if self.emergency_stop.value:
 			t, e, tb = self.err_q.get()
 			print('exception in reading process, printing its traceback', file=sys.stderr)
-			raise t(*e)
+			raise t(*e).with_traceback(tb)
 
 	# background process
 	def _read_sync(self):
@@ -229,13 +229,7 @@ class BaseWriter:
 	def __exit__(self, exc_type, exc_value, exc_trace):
 		dprint('base writer __exit__')
 		# check emergency status first
-		if self._sync:
-			if exc_type is None:
-				self._close_handler()
-			else:
-				self._cancel()
-
-		else:
+		if not self._sync: # case when self._sync==True, the _worker has closed the handler
 			dprint('base writer: exiting async writer')
 			if isinstance(exc_value, KeyboardInterrupt):
 				pass
@@ -297,16 +291,19 @@ class BaseWriter:
 			if self.emergency_stop.value:
 				self._cancel()
 			else:
+				print('2222222')
 				self._close_handler()
 			dprint('base writer worker: handler closed')
 
 		except KeyboardInterrupt:
 			pass
 		except Exception as e:  # something crashed
+			print(e)
 			self.emergency_stop.value = True
 			import traceback as tb
 			self.err_q.put((e.__class__, e.args, ''.join(tb.format_tb(sys.exc_info()[2]))))
 			self._cancel()
+
 		dprint('base writer worker: exiting (or trying)')
 		sleep(0)  # unlock some resource
 

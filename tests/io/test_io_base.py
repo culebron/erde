@@ -1,8 +1,11 @@
-import pytest
-import geopandas as gpd
+from contextlib import contextmanager
+from erde.io import read_file
+from erde.io.base import BaseReader, BaseWriter
 from shapely.geometry import Point, LineString, Polygon
+from time import sleep
 from unittest.mock import patch, Mock
-from erde.io.base import BaseReader
+import geopandas as gpd
+import pytest
 
 
 d = 'tests/io/data/'
@@ -11,7 +14,7 @@ def test_base_reader():
 
 	# (self, source, geometry_filter=None, chunk_size: int = 10_000, sync: bool = False, pbar: bool = True, queue_size=10, **kwargs)
 
-	df = gpd.read_file(d + 'polygons.gpkg')
+	df = gpd.read_file(d + 'polygons.gpkg', driver='GPKG')
 	s = 10
 	dfs = [df[i:i + s] for i in range(0, len(df), s)]
 	gen_obj = (i for i in df.geometry.values)
@@ -41,7 +44,175 @@ def test_base_reader():
 	with pytest.raises(TypeError):
 		BaseReader('mock source', Mock)
 
-def test_parallel():
+def test_raise_notimplemented():
+	# basereader must raise NotImplementedError when we try reading chunks of data
+
+	#
+	with BaseReader(d + 'polygons.gpkg', chunk_size=3, sync=False) as rd:
+		itr = iter(rd)
+		with pytest.raises(NotImplementedError):
+			next(itr)
+
+		with pytest.raises(NotImplementedError):
+			itr._read_sync()
+
+		with pytest.raises(NotImplementedError):
+			itr.stats('test')
+
+
+def test_parallel_coverage():
+	# just coverage
 	for s in (False, True):
 		with BaseReader(d + 'polygons.gpkg', chunk_size=3, sync=s) as rd:
 			pass
+
+	with pytest.raises(RuntimeError):
+		with BaseReader(d + 'polygons.gpkg', chunk_size=3) as rd:
+			# call __exit__ with runtime error
+			rd.out_q.put('a data object to keep the queue busy')
+			rd.out_q.put('another data object')
+			rd.background_process.start()
+			sleep(1)
+			raise RuntimeError
+
+	assert rd.out_q.empty()
+	assert not rd.background_process.is_alive()
+
+
+def test_read_parallel():
+	# 1. should yield what was in the q and exit normally
+	# 2. when we raise emergency stop, it should break and raise the error from err_q
+
+	@contextmanager
+	def _setup():
+		with BaseReader(d + 'polygons.gpkg', chunk_size=3) as br:
+			# entered context but did not start process yet
+			assert not br.background_process.is_alive()
+
+			br.out_q.put(df)
+			br.out_q.put(df)
+			br.out_q.put(None)
+
+			yield br
+
+
+
+	df = read_file(d + 'polygons.gpkg')
+
+	with _setup() as br:
+		ret_data = list(br._read_parallel())
+		assert len(ret_data) == 2
+
+	with _setup() as br:
+		# generator will reach yield statement before we get any value, and will yield exactly one df
+		gen = br._read_parallel()
+
+		# pretending we had an exception
+		e = RuntimeError('arbitrary exception')
+		br.emergency_stop.value = True
+		br.err_q.put((e.__class__, e.args, None))
+
+		# the generator will run till the next yield, then our code is supposed to get the dataframe
+		with pytest.raises(RuntimeError):
+			df = next(gen)
+
+def make_chunks():
+	df = read_file(d + 'polygons.gpkg')
+	return [df[i:i+2] for i in range(0, 6, 2)]
+
+def test_read_worker():
+	# _worker should put all dfs yielded by self._read_sync() into que
+	from unittest import mock
+
+	@contextmanager
+	def _setup():
+		from queue import Queue
+		qq = Queue()
+		with BaseReader(d + 'polygons.gpkg', chunk_size=3) as br:
+			with mock.patch.object(br, '_read_sync', return_value=dfgen()) as rs, mock.patch.object(br, 'out_q', qq):
+				yield br, rs
+
+	orig_data = make_chunks()
+	def dfgen():
+		for i in orig_data:
+			yield i
+
+	# just a normal read, make sure it's called once
+	with _setup() as (br, rs):
+		br._worker()
+		rs.assert_called_once()
+		out_data = []
+		sleep(0)
+		while not br.out_q.empty():
+			out_data.append(br.out_q.get())
+			sleep(0) # otherwise que won't work
+
+	assert len(out_data) == len(orig_data) + 1
+
+	for a, b in zip(out_data, orig_data):
+		assert a.equals(b)
+
+	assert out_data[-1] is None
+
+	with _setup() as (br, rs):
+		e = RuntimeError('arbitrary exception')
+		br.emergency_stop.value = True
+		br.err_q.put((e.__class__, e.args, None))
+		br._worker()
+		sleep(0)
+		assert br.out_q.empty()
+
+
+from unittest import mock
+
+out_data = []
+def _pretend_to_write(self, df):
+	# this function is called from worker and does nothing
+	out_data.append(df)
+
+
+runtime_error_arg = 'pretend we crashed'
+def _pretend_to_crash(self, df):
+	# _worker should process the exception
+	raise RuntimeError(runtime_error_arg)
+
+
+def _pretend_keyboard_interrupt(self, df):
+	pass
+
+
+from queue import Queue
+def _setup_writer_q():
+	q = Queue(maxsize=100)
+	in_data = make_chunks()
+
+	for df in in_data:
+		q.put(df)
+
+	q.put(None)
+	return in_data, q
+
+
+def test_write_worker_ok():
+	with mock.patch.multiple(BaseWriter, _close_handler=mock.MagicMock(return_value=None), _cancel=mock.MagicMock(return_value=None), _write_sync=_pretend_to_write):
+		with BaseWriter('/tmp/test.gpkg', sync=True) as bw:
+			in_data, in_q = _setup_writer_q()
+			bw.in_q = in_q
+			bw.err_q = Queue()
+			bw._worker()
+
+		BaseWriter._close_handler.assert_called_once()
+		BaseWriter._cancel.assert_not_called()
+
+	for i, j in zip(in_data, out_data):
+		assert i.equals(j)
+
+
+@mock.patch.multiple(BaseWriter, _close_handler=mock.MagicMock(return_value=None), _cancel=mock.MagicMock(return_value=None), _write_sync=_pretend_to_crash)
+def test_write_worker_crash(_close_handler, _cancel, _write_sync):
+	with BaseWriter('/tmp/test.gpgk', sync=True) as bw:
+		in_data, in_q = _setup_q()
+		bw.in_q = in_q
+		bw.err_q = Queue()
+		bw._worker()
+
