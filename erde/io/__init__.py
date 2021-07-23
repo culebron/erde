@@ -48,7 +48,7 @@ def connect_postgres(connection_string):
 
 def read_xls(path, path_match, *args, **kwargs):
 	path, sheet = path_match['path'], path_match['sheet']
-	excel_dict = pd.read_excel(path, sheet_name=sheet, **kwargs)  # OrderedDict of dataframes
+	excel_dict = pd.read_excel(path, sheet_name=sheet, engine='openpyxl', **kwargs)  # OrderedDict of dataframes
 	return _try_gdf(excel_dict.popitem()[1])  # pop item, last=False, returns (key, value) tuple
 
 
