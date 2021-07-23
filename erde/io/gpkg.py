@@ -130,22 +130,24 @@ class GpkgWriter(BaseWriter):
 		self.layername = g['layer_name'] or g['file_own_name']
 
 	def _write_sync(self, df):
+		dprint('gpkg write sync')
 		if df is None or len(df) == 0:
 			return
 
 		#dicts_to_json(df, inplace=True)
-		dprint('made dicts')
+		dprint('gpkg write sync made dicts')
 		self._open_handler(df)
 		dprint(f'checked handler, writing {len(df)} records')
 		self._handler.writerecords(df.iterfeatures())
-		dprint('records done')
+		dprint('gpkg write sync records done')
 		# replace by df.to_file(mode='a') later
 
 	def _open_handler(self, df=None):
 		if self._handler is not None:
-			dprint('not opening handler')
+			dprint('gpkg open handler not opening')
 			return
 
+		dprint('gpkg opening handler')
 		import fiona
 		from geopandas.io.file import infer_schema
 		if df is None:  # or len(df) == 0:
@@ -166,21 +168,24 @@ class GpkgWriter(BaseWriter):
 		self._handler = fiona.open(self.target, 'w', layer=self.layername, crs=crs_, driver=self.fiona_driver, schema=schema)
 
 	def _close_handler(self):
+		dprint('gpkg close handler need to open handler')
 		self._open_handler()
-		dprint('closing handler')
+		dprint('gpkg close handler closing')
 		self._handler.close()
 		self._handler = None
 
 	def _cancel(self):
 		sleep(0)
-		if self._handler is not None:
-			self._close_handler()
-			import fiona
-			layers = fiona.listlayers(self.target)
-			fiona.remove(self.target, layer=self.layername, driver=self.fiona_driver)  # delete layer there
-			# delete file if GPKG had only 1 layer, that was just deleted
-			if len(layers) == 1:
-				os.unlink(self.target)
+		self._close_handler()
+		dprint('gpkg cancel closed')
+		import fiona
+		layers = fiona.listlayers(self.target)
+		dprint('gpkg cancel removing the layers')
+		fiona.remove(self.target, layer=self.layername, driver=self.fiona_driver)  # delete layer there
+		# delete file if GPKG had only 1 layer, that was just deleted
+		if len(layers) == 1:
+			dprint('gpkg cancel removing file')
+			os.unlink(self.target)
 
 
 class GpkgDriver(BaseDriver):

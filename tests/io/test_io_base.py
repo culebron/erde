@@ -171,7 +171,7 @@ def _pretend_to_write(self, df):
 	out_data.append(df)
 
 
-runtime_error_arg = 'pretend we crashed'
+runtime_error_arg = "let's fail"
 def _pretend_to_crash(self, df):
 	# _worker should process the exception
 	raise RuntimeError(runtime_error_arg)
@@ -201,18 +201,25 @@ def test_write_worker_ok():
 			bw.err_q = Queue()
 			bw._worker()
 
-		BaseWriter._close_handler.assert_called_once()
+		# here we can't test that _close_handler is called only once -- it's been called twice, by _worker and __exit__
+		# because we assume sync mode (_worker not launched and __exit__ does cleanup), but then call _worker anyway
+		BaseWriter._close_handler.assert_called()
 		BaseWriter._cancel.assert_not_called()
 
 	for i, j in zip(in_data, out_data):
 		assert i.equals(j)
 
 
-@mock.patch.multiple(BaseWriter, _close_handler=mock.MagicMock(return_value=None), _cancel=mock.MagicMock(return_value=None), _write_sync=_pretend_to_crash)
-def test_write_worker_crash(_close_handler, _cancel, _write_sync):
-	with BaseWriter('/tmp/test.gpgk', sync=True) as bw:
-		in_data, in_q = _setup_q()
-		bw.in_q = in_q
-		bw.err_q = Queue()
-		bw._worker()
+def test_write_worker_crash():
+	with mock.patch.multiple(BaseWriter, _close_handler=mock.MagicMock(return_value=None), _cancel=mock.MagicMock(return_value=None), _write_sync=_pretend_to_crash):
+		with BaseWriter('/tmp/test.gpgk', sync=True) as bw:
+			in_data, in_q = _setup_writer_q()
+			bw.in_q = in_q
+			bw.err_q = Queue()
+			bw._worker()
+
+		# _cancel is called twice, by _worker and __exit__, because we pretended to run in sync mode, but then called _worker anyway, which calls _cancel.
+		# for the same reason, _close_handler is called by __exit__, not by _worker (who caught the exception)
+		BaseWriter._close_handler.assert_called_once()
+		BaseWriter._cancel.assert_called()
 

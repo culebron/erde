@@ -40,7 +40,6 @@ class BaseReader:
 		assert chunk_size is None or chunk_size > 0, "chunk_size must be positive int or None"
 		self.chunk_size = chunk_size
 		self.queue_size = queue_size
-
 		self._sync = sync or ESYNC
 		self.pbar = pbar
 		self.index_start = 0  # dataframes should have different indice, otherwise they'll be merged incorrectly
@@ -227,9 +226,16 @@ class BaseWriter:
 
 	# main process
 	def __exit__(self, exc_type, exc_value, exc_trace):
-		dprint('base writer __exit__')
+		dprint('base writer __exit__ !!!')
 		# check emergency status first
-		if not self._sync: # case when self._sync==True, the _worker has closed the handler
+		dprint(self._sync, exc_type, exc_value)
+		if self._sync and exc_type is None:
+			dprint('base writer __exit__ closing handler')
+			self._close_handler()
+		elif self._sync and exc_type is not None:
+			dprint('base writer __exit__ cancelling')
+			self._cancel()
+		else:
 			dprint('base writer: exiting async writer')
 			if isinstance(exc_value, KeyboardInterrupt):
 				pass
@@ -250,6 +256,7 @@ class BaseWriter:
 			self.err_q.close()
 			self.background_process.join()
 			sleep(0)
+
 		dprint('base writer: exit done')
 
 	# main process
@@ -267,7 +274,7 @@ class BaseWriter:
 			self.in_q.put(df)
 			sleep(0)  # unlock the queue thread
 
-	# background process
+	# is called only in the background process
 	def _worker(self):
 		try:
 			while True:
@@ -291,17 +298,18 @@ class BaseWriter:
 			if self.emergency_stop.value:
 				self._cancel()
 			else:
-				print('2222222')
 				self._close_handler()
 			dprint('base writer worker: handler closed')
 
 		except KeyboardInterrupt:
-			pass
+			dprint('base worker KeyboardInterrupt cancelling')
+			self._cancel()
 		except Exception as e:  # something crashed
-			print(e)
+			dprint('base worker exception', e)
 			self.emergency_stop.value = True
 			import traceback as tb
 			self.err_q.put((e.__class__, e.args, ''.join(tb.format_tb(sys.exc_info()[2]))))
+			dprint('base worker Exception cancelling')
 			self._cancel()
 
 		dprint('base writer worker: exiting (or trying)')
