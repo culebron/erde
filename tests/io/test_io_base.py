@@ -9,12 +9,13 @@ import pytest
 
 
 d = 'tests/io/data/'
+polygons = gpd.read_file(d + 'polygons.gpkg', driver='GPKG')
 
 def test_base_reader():
 
 	# (self, source, geometry_filter=None, chunk_size: int = 10_000, sync: bool = False, pbar: bool = True, queue_size=10, **kwargs)
 
-	df = gpd.read_file(d + 'polygons.gpkg', driver='GPKG')
+	df = polygons.copy()
 	s = 10
 	dfs = [df[i:i + s] for i in range(0, len(df), s)]
 	gen_obj = (i for i in df.geometry.values)
@@ -97,7 +98,7 @@ def test_read_parallel():
 
 
 
-	df = read_file(d + 'polygons.gpkg')
+	df = polygons.copy()
 
 	with _setup() as br:
 		ret_data = list(br._read_parallel())
@@ -117,7 +118,7 @@ def test_read_parallel():
 			df = next(gen)
 
 def make_chunks():
-	df = read_file(d + 'polygons.gpkg')
+	df = polygons.copy()
 	return [df[i:i+2] for i in range(0, 6, 2)]
 
 def test_read_worker():
