@@ -83,7 +83,7 @@ tmp_points = '/tmp/temporary-points.gpkg'
 
 def test_write():
 	for s in (True, False):
-		print(f'gpgk test write begin s={s}')
+		print(f'gpkg test write begin s={s}')
 		old_df = read_file(match_points)
 
 		if os.path.exists(tmp_points):
@@ -97,11 +97,11 @@ def test_write():
 		assert os.path.exists(tmp_points), f"file {tmp_points} does not exist, but should have been created"
 		new_df = read_file(tmp_points)
 		assert sorted(new_df['name'].tolist()) == sorted(old_df['name'].tolist())
-		print(f'gpgk test write end s={s}')
+		print(f'gpkg test write end s={s}')
 
 def test_write_error():
 	for s in (False, True):
-		print(f'gpgk test write error begin s={s}')
+		print(f'gpkg test write error begin s={s}')
 		try:
 			os.unlink(tmp_points)
 		except:
@@ -127,7 +127,7 @@ def test_write_error():
 			# if async, process must be ended
 			assert not w.background_process.is_alive()
 		sleep(1)
-		print(f'gpgk test write error end s={s}')
+		print(f'gpkg test write error end s={s}')
 
 def test_write_empty():
 	import fiona
