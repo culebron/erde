@@ -1,7 +1,6 @@
 yaargh
 geojson
 geopandas
-pandas>=1.2.0
 polyline
 pygeos
 pymongo
