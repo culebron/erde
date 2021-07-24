@@ -1,11 +1,9 @@
-#!/usr/bin/python3.6
-
-from .base import BaseDriver, BaseReader, BaseWriter
 from . import FORMATS
-from erde import dprint
+from .base import BaseDriver, BaseReader, BaseWriter
 from collections import OrderedDict
-import geopandas as gpd
+from erde import dprint
 from time import sleep
+import geopandas as gpd
 import os
 import re
 
