@@ -47,8 +47,6 @@ def test_base_reader():
 
 def test_raise_notimplemented():
 	# basereader must raise NotImplementedError when we try reading chunks of data
-
-	#
 	with BaseReader(d + 'polygons.gpkg', chunk_size=3, sync=False) as rd:
 		itr = iter(rd)
 		with pytest.raises(NotImplementedError):
@@ -59,6 +57,11 @@ def test_raise_notimplemented():
 
 		with pytest.raises(NotImplementedError):
 			itr.stats('test')
+
+	with BaseWriter('/tmp/not-implemented-writer.gpkg', sync=False) as wr:
+		for method in ('_write_sync', '_open_handler', '_cancel', '_close_handler'):
+			with pytest.raises(NotImplementedError):
+				getattr(wr, method)()
 
 
 def test_parallel_coverage():
@@ -179,7 +182,7 @@ def _pretend_to_crash(self, df):
 
 
 def _pretend_keyboard_interrupt(self, df):
-	pass
+	raise KeyboardInterrupt()
 
 
 from queue import Queue
@@ -194,13 +197,18 @@ def _setup_writer_q():
 	return in_data, q
 
 
+def _worker_test():
+	with BaseWriter('/tmp/test.gpkg', sync=True) as bw:
+		in_data, in_q = _setup_writer_q()
+		bw.in_q = in_q
+		bw.err_q = Queue()
+		bw._worker()
+
+	return bw, in_data
+
 def test_write_worker_ok():
 	with mock.patch.multiple(BaseWriter, _close_handler=mock.MagicMock(return_value=None), _cancel=mock.MagicMock(return_value=None), _write_sync=_pretend_to_write):
-		with BaseWriter('/tmp/test.gpkg', sync=True) as bw:
-			in_data, in_q = _setup_writer_q()
-			bw.in_q = in_q
-			bw.err_q = Queue()
-			bw._worker()
+		bw, in_data = _worker_test()
 
 		# here we can't test that _close_handler is called only once -- it's been called twice, by _worker and __exit__
 		# because we assume sync mode (_worker not launched and __exit__ does cleanup), but then call _worker anyway
@@ -213,14 +221,17 @@ def test_write_worker_ok():
 
 def test_write_worker_crash():
 	with mock.patch.multiple(BaseWriter, _close_handler=mock.MagicMock(return_value=None), _cancel=mock.MagicMock(return_value=None), _write_sync=_pretend_to_crash):
-		with BaseWriter('/tmp/test.gpgk', sync=True) as bw:
-			in_data, in_q = _setup_writer_q()
-			bw.in_q = in_q
-			bw.err_q = Queue()
-			bw._worker()
+		bw, in_data = _worker_test()
 
 		# _cancel is called twice, by _worker and __exit__, because we pretended to run in sync mode, but then called _worker anyway, which calls _cancel.
 		# for the same reason, _close_handler is called by __exit__, not by _worker (who caught the exception)
 		BaseWriter._close_handler.assert_called_once()
 		BaseWriter._cancel.assert_called()
 
+
+def test_write_worker_keyboard_interrupt():
+	with mock.patch.multiple(BaseWriter, _close_handler=mock.MagicMock(return_value=None), _cancel=mock.MagicMock(return_value=None), _write_sync=_pretend_keyboard_interrupt):
+		bw, in_data = _worker_test()
+
+		BaseWriter._close_handler.assert_called_once()
+		BaseWriter._cancel.assert_called()

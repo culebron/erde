@@ -7,12 +7,12 @@ from multiprocessing import Process, Value, Queue
 from shapely.geometry.base import BaseGeometry
 from time import sleep
 from tqdm import tqdm
+import ctypes
 import geopandas as gpd
 import pandas as pd
 import re
-import types
-import ctypes
 import sys
+import types
 
 
 class BaseReader:
