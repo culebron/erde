@@ -6,6 +6,8 @@ from time import sleep
 from unittest.mock import patch, Mock
 import geopandas as gpd
 import pytest
+import sys
+import traceback as tb
 
 
 d = 'tests/io/data/'
@@ -197,19 +199,19 @@ def _setup_writer_q():
 	return in_data, q
 
 
-def _worker_test():
-	with BaseWriter('/tmp/test.gpkg', sync=True) as bw:
-		in_data, in_q = _setup_writer_q()
-		bw.in_q = in_q
-		bw.err_q = Queue()
-		bw._worker()
+@contextmanager
+def patch_base_writer(**kwargs):
+	with mock.patch.multiple(BaseWriter, _close_handler=mock.MagicMock(return_value=None), _cancel=mock.MagicMock(return_value=None), **kwargs):
+		with BaseWriter('/tmp/test.gpkg', sync=True) as bw:
+			in_data, in_q = _setup_writer_q()
+			bw.in_q = in_q
+			bw.err_q = Queue()
+			bw._worker()
 
-	return bw, in_data
+		yield bw, in_data
 
 def test_write_worker_ok():
-	with mock.patch.multiple(BaseWriter, _close_handler=mock.MagicMock(return_value=None), _cancel=mock.MagicMock(return_value=None), _write_sync=_pretend_to_write):
-		bw, in_data = _worker_test()
-
+	with patch_base_writer(_write_sync=_pretend_to_write) as (bw, in_data):
 		# here we can't test that _close_handler is called only once -- it's been called twice, by _worker and __exit__
 		# because we assume sync mode (_worker not launched and __exit__ does cleanup), but then call _worker anyway
 		BaseWriter._close_handler.assert_called()
@@ -220,9 +222,7 @@ def test_write_worker_ok():
 
 
 def test_write_worker_crash():
-	with mock.patch.multiple(BaseWriter, _close_handler=mock.MagicMock(return_value=None), _cancel=mock.MagicMock(return_value=None), _write_sync=_pretend_to_crash):
-		bw, in_data = _worker_test()
-
+	with patch_base_writer(_write_sync=_pretend_to_crash) as (bw, in_data):
 		# _cancel is called twice, by _worker and __exit__, because we pretended to run in sync mode, but then called _worker anyway, which calls _cancel.
 		# for the same reason, _close_handler is called by __exit__, not by _worker (who caught the exception)
 		BaseWriter._close_handler.assert_called_once()
@@ -230,8 +230,21 @@ def test_write_worker_crash():
 
 
 def test_write_worker_keyboard_interrupt():
-	with mock.patch.multiple(BaseWriter, _close_handler=mock.MagicMock(return_value=None), _cancel=mock.MagicMock(return_value=None), _write_sync=_pretend_keyboard_interrupt):
-		bw, in_data = _worker_test()
-
+	with patch_base_writer(_write_sync=_pretend_keyboard_interrupt) as (bw, in_data):
 		BaseWriter._close_handler.assert_called_once()
 		BaseWriter._cancel.assert_called()
+
+def test_write_worker_stops():
+	with patch_base_writer(_write_sync=_pretend_to_write) as (bw, in_data):
+		bw(polygons)
+		bw.emergency_stop.value = True
+		bw.background_process = Mock(join=Mock())
+		msg = '__call__ should raise this'
+		e = RuntimeError(msg)
+
+		bw.err_q.put((e.__class__, e.args, ''.join(tb.format_tb(sys.exc_info()[2]))))
+		bw._sync = False # pretending we're in async mode
+		with pytest.raises(RuntimeError):
+			bw(polygons)
+
+		bw.background_process.join.assert_called_once()
