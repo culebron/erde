@@ -3,7 +3,6 @@ from .base import BaseDriver, BaseReader, BaseWriter
 from csv import field_size_limit
 from shapely.wkt import loads
 import geopandas as gpd
-import io
 import os
 import pandas as pd
 import shapely.errors
@@ -76,7 +75,7 @@ class CsvReader(BaseReader):
 class CsvWriter(BaseWriter):
 	target_regexp = PATH_REGEXP
 
-	def __init__(self, target, sync:bool=False, **kwargs):
+	def __init__(self, target, sync:bool=True, **kwargs):
 		super().__init__(target, sync, **kwargs)
 		field_size_limit(10000000)
 		self._file_handler = None
@@ -89,10 +88,13 @@ class CsvWriter(BaseWriter):
 		if df is None:
 			df = pd.DataFrame()
 		from csv import DictWriter
+		from io import TextIOBase
+
 		self.fieldnames = list(df)
 		if isinstance(self.target, str):
 			self._file_handler = open(self.target, 'w')
-		elif isinstance(self.target, io.TextIOWrapper):
+
+		elif isinstance(self.target, TextIOBase):
 			self._file_handler = self.target
 
 		self._handler = DictWriter(self._file_handler, fieldnames=self.fieldnames, extrasaction='ignore')

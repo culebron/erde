@@ -33,11 +33,6 @@ class ShpWriter(GeoJsonWriter):
 		name_match = re.match(self.target_regexp, self.target)
 		assert name_match, f'filename {target} is not GeoJSON path'
 
-	def _cancel(self):
-		if self._handler is not None:
-			self._close_handler()
-			os.unlink(self.target)
-
 
 class ShpDriver(GeoJsonDriver):
 	reader = ShpReader

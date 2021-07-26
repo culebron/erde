@@ -101,6 +101,7 @@ class BaseReader:
 
 	# main process
 	def __enter__(self):
+		dprint('base reader __enter__')
 		# multiprocessing features can be used only if the object is used as contex manager. Otherwise there's no safe shutdown mechanism.
 		self.err_q = Queue(maxsize=2)
 		self.out_q = Queue(maxsize=self.queue_size)
@@ -109,7 +110,7 @@ class BaseReader:
 		return self
 
 	def __exit__(self, exc_type, exc_value, exc_trace):
-		dprint('base reader __EXIT__')
+		dprint('base reader __exit__')
 		if not self._sync:
 			dprint('base reader: exiting async writer')
 			if exc_type is not None:

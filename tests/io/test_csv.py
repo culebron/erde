@@ -1,6 +1,7 @@
 import pytest
 from unittest import mock
 from erde import read_df, read_stream, write_stream
+from erde.io import csv
 
 d = 'tests/io/data/'
 
@@ -30,3 +31,15 @@ def test_write_cancel():
 			raise RuntimeError('test')
 
 	#wr._cancel.assert_called_once()
+
+def test_write_to_buffer():
+	from io import StringIO
+
+	buf = StringIO()
+	with csv.CsvWriter(buf, sync=True) as wr:  # must be in same process
+		wr(test_df)
+		wr(test_df)
+
+		assert len(buf.getvalue()) > 0
+
+

@@ -256,3 +256,30 @@ def test_write_worker_stops():
 
 		bw.background_process.join.assert_called_once()
 
+
+def test_background_process_start():
+	from erde import read_stream
+	with mock.patch('erde.io.base.Process', mock.MagicMock()), mock.patch('erde.io.base.Queue', mock.MagicMock()):
+
+		rd = read_stream(d + 'points.csv')
+
+		assert rd.background_process is None
+
+		with rd as rd1:
+			assert rd.background_process is not None
+			rd.background_process.start.assert_not_called()
+			next(rd1)
+			rd.background_process.start.assert_called_once()
+
+		rd2 = read_stream(d + 'points.csv')
+		next(rd2)
+		assert rd2.background_process is None
+
+
+def test_cant_open_return_false():
+	# base driver itself has no path_regexp
+	assert not BaseDriver.can_open('some_path')
+
+	with mock.patch('erde.io.base.BaseDriver.path_regexp', r'^not_matching$'):
+		assert not BaseDriver.can_open('some_path')
+		assert BaseDriver.can_open('not_matching')
