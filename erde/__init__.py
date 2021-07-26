@@ -17,13 +17,16 @@ def dprint(*args, **kwargs):
 	if ELOG == '1':
 		print(*args, **kwargs)
 
+
 def _read(*args, **kwargs):
 	from .io import read_df
 	return read_df(*args, **kwargs)
 
+
 def _write(*args, **kwargs):
 	from .io import write_file
 	return write_file(*args, **kwargs)
+
 
 # when you put these types in annotation, @command decorator will use these functions instead of the class instatiations
 TYPE_OPENERS = {
