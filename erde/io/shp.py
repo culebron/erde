@@ -39,10 +39,7 @@ class ShpWriter(GeoJsonWriter):
 class ShpDriver(GeoJsonDriver):
 	reader = ShpReader
 	writer = ShpWriter
+	fiona_driver = FIONA_DRIVER
 	path_regexp = r'^(?P<file_path>(?:.*/)?(?P<file_own_name>.*)\.(?P<extension>shp))$'
-
-	@classmethod
-	def read_df(cls, path, path_match, crs=None, *args, **kwargs):
-		return ShpDriver.gpd_read(path, crs, driver=FIONA_DRIVER, *args, **kwargs)
 
 driver = ShpDriver

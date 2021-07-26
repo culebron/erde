@@ -192,8 +192,8 @@ class GpkgDriver(BaseDriver):
 	data_type = gpd.GeoDataFrame
 	path_regexp = PATH_REGEXP
 
-	@staticmethod
-	def read_df(path, path_match, crs=None, *args, **kwargs):
+	@classmethod
+	def read_df(cls, path, path_match, crs=None, *args, **kwargs):
 		match = re.match(PATH_REGEXP, path)
 		filename = match['file_name']
 		file_path = match['file_path']
@@ -215,8 +215,8 @@ class GpkgDriver(BaseDriver):
 
 		return GpkgDriver.gpd_read(file_path, driver=FIONA_DRIVER, crs=crs, layer=layer_name, **kwargs)
 
-	@staticmethod
-	def write_df(df, path, path_match, *args, **kwargs):
+	@classmethod
+	def write_df(cls, df, path, path_match, *args, **kwargs):
 		filepath = path_match['file_path']
 		layer_name = path_match['layer_name'] or path_match['file_own_name']
 
