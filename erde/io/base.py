@@ -35,7 +35,13 @@ class BaseReader:
 
 	"""
 
+	source_regexp = None
+
 	def __init__(self, source, geometry_filter=None, chunk_size: int = 10_000, sync: bool = False, pbar: bool = True, queue_size=10, **kwargs):
+		if self.source_regexp:
+			self.source_match = re.match(self.source_regexp, source)
+			assert self.source_match, f'File name {source} is not a valid {self.fiona_driver} path.'
+
 		self.source = source
 		assert chunk_size is None or chunk_size > 0, "chunk_size must be positive int or None"
 		self.chunk_size = chunk_size
@@ -337,18 +343,22 @@ class BaseDriver:
 	writer = BaseWriter
 
 	data_type = (pd.DataFrame, gpd.GeoDataFrame)
-	source_extension = None
-	source_regexp = None
+	path_regexp = None
 
 	@classmethod
 	def can_open(cls, source):
-		if cls.source_extension is not None:
-			return source.endswith('.' + cls.source_extension)
-
-		if cls.source_regexp is not None:
-			return re.match(cls.source_regexp, source)
+		if cls.path_regexp is not None:
+			return re.match(cls.path_regexp, source)
 
 		return False
+
+	@classmethod
+	def gpd_read(cls, path, crs=None, *args, **kwargs):
+		source_df = gpd.read_file(path, *args, **kwargs)
+		if crs is not None:
+			source_df.crs = crs
+
+		return source_df
 
 	@classmethod
 	def open_read(cls, *args, **kwargs):
@@ -357,3 +367,10 @@ class BaseDriver:
 	@classmethod
 	def open_write(cls, *args, **kwargs):
 		return cls.writer(*args, **kwargs)
+
+	@classmethod
+	def read_df(cls, *args, **kwargs):
+		raise NotImplementedError
+
+	def write_df(cls, *args, **kwargs):
+		raise NotImplementedError

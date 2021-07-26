@@ -1,8 +1,8 @@
 from contextlib import contextmanager
-from erde.io import read_file
 from erde.io.base import BaseReader, BaseWriter
 from shapely.geometry import Point, LineString, Polygon
 from time import sleep
+from unittest import mock
 from unittest.mock import patch, Mock
 import geopandas as gpd
 import pytest
@@ -169,8 +169,6 @@ def test_read_worker():
 		assert br.out_q.empty()
 
 
-from unittest import mock
-
 out_data = []
 def _pretend_to_write(self, df):
 	# this function is called from worker and does nothing
@@ -210,6 +208,7 @@ def patch_base_writer(**kwargs):
 
 		yield bw, in_data
 
+
 def test_write_worker_ok():
 	with patch_base_writer(_write_sync=_pretend_to_write) as (bw, in_data):
 		# here we can't test that _close_handler is called only once -- it's been called twice, by _worker and __exit__
@@ -248,3 +247,4 @@ def test_write_worker_stops():
 			bw(polygons)
 
 		bw.background_process.join.assert_called_once()
+

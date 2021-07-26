@@ -1,5 +1,5 @@
 from erde.io.gpkg import driver as dr
-from erde.io import read_file, write_file
+from erde.io import read_df
 from time import sleep
 from unittest import mock
 import errno
@@ -64,7 +64,7 @@ def test_exception_in_read():
 def test_geometry_filter():
 	for s in (True, False):
 		filter_source = d + 'match-simple-polys.geojson'
-		filter_df = read_file(filter_source)
+		filter_df = read_df(filter_source)
 		filter_geom = filter_df['geometry'].unary_union
 
 		expected_names = set('ACDFGI')
@@ -84,7 +84,7 @@ tmp_points = '/tmp/temporary-points.gpkg'
 def test_write():
 	for s in (True, False):
 		print(f'gpkg test write begin s={s}')
-		old_df = read_file(match_points)
+		old_df = read_df(match_points)
 
 		if os.path.exists(tmp_points):
 			os.unlink(tmp_points)
@@ -95,7 +95,7 @@ def test_write():
 				w(df)
 
 		assert os.path.exists(tmp_points), f"file {tmp_points} does not exist, but should have been created"
-		new_df = read_file(tmp_points)
+		new_df = read_df(tmp_points)
 		assert sorted(new_df['name'].tolist()) == sorted(old_df['name'].tolist())
 		print(f'gpkg test write end s={s}')
 

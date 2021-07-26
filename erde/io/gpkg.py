@@ -1,4 +1,3 @@
-from . import FORMATS
 from .base import BaseDriver, BaseReader, BaseWriter
 from collections import OrderedDict
 from erde import dprint
@@ -6,19 +5,19 @@ from time import sleep
 import geopandas as gpd
 import os
 import re
+import fiona
 
+FIONA_DRIVER = 'GPKG'
+PATH_REGEXP = r'^(?P<file_path>(?:.*/)?(?P<file_name>(?:.*/)?(?P<file_own_name>.*)\.(?P<extension>gpkg)))(?:\:(?P<layer_name>[a-z0-9_-]+))?$'
 
 class GpkgReader(BaseReader):
-	fiona_driver = 'GPKG'
-	name_regexp = FORMATS['gpkg']
+	fiona_driver = FIONA_DRIVER
+	source_regexp = PATH_REGEXP
 
 	def __init__(self, source, geometry_filter=None, chunk_size: int = 10_000, sync: bool = False, pbar: bool = True, **kwargs):
-		name_match = re.match(self.name_regexp, source)
-		assert name_match, f'File name {source} is not a valid {self.fiona_driver} path.'
-
 		super().__init__(source, geometry_filter, chunk_size, sync, pbar, **kwargs)
 
-		g = name_match.groupdict()
+		g = self.source_match.groupdict()
 		self.source = g['file_path']
 		self.layername = g['layer_name']
 
@@ -115,10 +114,11 @@ class GpkgReader(BaseReader):
 
 
 class GpkgWriter(BaseWriter):
-	fiona_driver = 'GPKG'
+	fiona_driver = FIONA_DRIVER
+	target_regexp = PATH_REGEXP
 
 	def __init__(self, target, sync: bool = False, **kwargs):
-		gpkg_match = re.match(FORMATS['gpkg'], target)
+		gpkg_match = re.match(self.target_regexp, target)
 		if not gpkg_match:
 			raise ValueError(f'filename {target} is not GeoPackage path')
 
@@ -190,8 +190,41 @@ class GpkgDriver(BaseDriver):
 	reader = GpkgReader
 	writer = GpkgWriter
 	data_type = gpd.GeoDataFrame
-	source_regexp = FORMATS['gpkg']
-	source_extension = None
+	path_regexp = PATH_REGEXP
+
+	@staticmethod
+	def read_df(path, path_match, crs=None, *args, **kwargs):
+		match = re.match(PATH_REGEXP, path)
+		filename = match['file_name']
+		file_path = match['file_path']
+		layer_name = match['layer_name']
+		own_name = match['file_own_name']
+
+		if layer_name in ('', None):
+			try:
+				layers = fiona.listlayers(file_path)
+			except ValueError:
+				raise ValueError('Fiona driver can\'t read layers from file %s' % filename)
+
+			if len(layers) == 1 and layer_name in ('', None):
+				layer_name = layers[0]
+			elif own_name in layers:
+				layer_name = own_name
+			else:
+				raise ValueError('Can\'t detect default layer in %s. Layers available are: %s' % (filename, ', '.join(layers)))
+
+		return GpkgDriver.gpd_read(file_path, driver=FIONA_DRIVER, crs=crs, layer=layer_name, **kwargs)
+
+	@staticmethod
+	def write_df(df, path, path_match, *args, **kwargs):
+		filepath = path_match['file_path']
+		layer_name = path_match['layer_name'] or path_match['file_own_name']
+
+		if os.path.exists(filepath):
+			if layer_name in fiona.listlayers(filepath):
+				fiona.remove(filepath, FIONA_DRIVER, layer_name)
+
+		df.to_file(filepath, driver=FIONA_DRIVER, encoding='utf-8', layer=layer_name)
 
 
 driver = GpkgDriver
