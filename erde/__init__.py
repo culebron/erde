@@ -19,11 +19,13 @@ def dprint(*args, **kwargs):
 
 
 def _read(*args, **kwargs):
+	"""Opens dataframes in CLI script if a parameter is annotated as (g)df."""
 	from .io import read_df
 	return read_df(*args, **kwargs)
 
 
 def _write(*args, **kwargs):
+	"""Saves output to file if CLI function has output type annotated as (g)df."""
 	from .io import write_file
 	return write_file(*args, **kwargs)
 
@@ -140,7 +142,7 @@ def write_df(df, path, *args, **kwargs):
 	dr.write_df(df, path, pm, *args, **kwargs)
 
 
-def read_stream(path, geometry_filter=None, chunk_size=1, pbar=False, sync=True, *args, **kwargs):
+def read_stream(path, geometry_filter=None, chunk_size=10_000, pbar=False, sync=True, *args, **kwargs):
 	from .io import select_driver
 	dr, pm = select_driver(path)
 	return dr.read_stream(path, geometry_filter, chunk_size, pbar, sync, *args, **kwargs)

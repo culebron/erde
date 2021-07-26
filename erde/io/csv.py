@@ -1,5 +1,5 @@
 from . import check_path_exists
-from .base import BaseDriver, BaseReader, BaseWriter
+from .base import BaseDriver, BaseReader, BaseWriter, FileWriterMixin
 from csv import field_size_limit
 from shapely.wkt import loads
 import geopandas as gpd
@@ -72,7 +72,7 @@ class CsvReader(BaseReader):
 						pass
 
 
-class CsvWriter(BaseWriter):
+class CsvWriter(FileWriterMixin, BaseWriter):
 	target_regexp = PATH_REGEXP
 
 	def __init__(self, target, sync:bool=True, **kwargs):
@@ -113,11 +113,6 @@ class CsvWriter(BaseWriter):
 	def _close_handler(self):
 		self._open_handler()
 		self._file_handler.close()
-
-	def _cancel(self):
-		if self._handler is not None:
-			self._close_handler()
-			os.unlink(self.target)
 
 
 class CsvDriver(BaseDriver):

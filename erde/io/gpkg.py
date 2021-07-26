@@ -5,6 +5,7 @@ from erde import dprint
 from time import sleep
 import fiona
 import geopandas as gpd
+import pandas as pd
 import os
 import re
 
@@ -75,6 +76,7 @@ class GpkgReader(BaseReader):
 
 						rows = []
 						try:
+							print('chunk', self.chunk_size)
 							while self.chunk_size is None or len(rows) < self.chunk_size:
 								row = next(iterator)
 								data = row['properties']
@@ -112,7 +114,7 @@ class GpkgReader(BaseReader):
 				stat['min'], stat['mean'], stat['max'], stat['variance'], stat['count'] = curs3.fetchall()[0]
 			stats.append(stat)
 
-		return stats
+		return pd.DataFrame(stats)
 
 
 class GpkgWriter(BaseWriter):

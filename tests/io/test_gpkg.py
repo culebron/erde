@@ -157,3 +157,12 @@ def test_stream_guess_layer():
 	# if 2 layers and none like file name, raises exception
 	with pytest.raises(RuntimeError):
 		read_stream(d + 'unguessable-layer.gpkg')
+
+
+def test_read_stats():
+	from erde import read_stream
+	rd = read_stream(d + 'stats.gpkg')
+	print()
+	print(rd.stats())
+	print(next(rd))
+

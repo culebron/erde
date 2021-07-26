@@ -30,15 +30,6 @@ def test_geom_types():
 	with pytest.raises(ValueError):
 		write_df(df, 'not existing format')
 
-def test_exceptions_csv():
-	# non-geometry or non-existent column
-	df = read_df(f'{d}points.csv')
-
-	df2 = read_df(f'{d}points.csv', geometry_columns='number')
-	assert len(df) == len(df2)
-	assert 'number' in df2
-	df2 = read_df(f'{d}points.csv', geometry_columns='random_column_does_not_exist')
-	assert len(df) == len(df2)
 
 def test_exceptions_gpkg():
 	with pytest.raises(ValueError): read_df(f'{d}points.gpkg:nosuchlayer')
@@ -49,9 +40,6 @@ def test_exceptions_gpkg():
 	read_df(f'{d}multiple-layers.gpkg')
 	with pytest.raises(ValueError):
 		read_df(f'{d}multiple-layers-unclear.gpkg')
-
-	df = read_df(f'{d}points-broken.csv')
-	assert len(df) == 8
 
 def test_pg_id():
 	pgstr = 'postgresql://erdetest:erdetest@localhost:5432/erdetest'

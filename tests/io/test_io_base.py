@@ -283,3 +283,18 @@ def test_cant_open_return_false():
 	with mock.patch('erde.io.base.BaseDriver.path_regexp', r'^not_matching$'):
 		assert not BaseDriver.can_open('some_path')
 		assert BaseDriver.can_open('not_matching')
+
+
+def test_default_chunk_size():
+	# should be 10_000
+	from shapely.geometry import Point
+	from erde import write_df, read_stream
+	df = gpd.GeoDataFrame([{'x': x, 'y': y, 'geometry': Point(x, y)} for x in range(-179, 0) for y in range(-89, 0)])
+
+	assert len(df) > 10_000
+
+	p = '/tmp/32krows.csv'
+	write_df(df, p)
+	rd = read_stream(p)
+	df = next(rd)
+	assert len(df) == 10_000

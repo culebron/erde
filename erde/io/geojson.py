@@ -1,5 +1,6 @@
 from . import check_path_exists
 from .gpkg import GpkgDriver, GpkgReader, GpkgWriter
+from .base import FileWriterMixin
 import fiona
 import os
 import re
@@ -23,7 +24,7 @@ class GeoJsonReader(GpkgReader):
 			raise RuntimeError(*e.args)
 
 
-class GeoJsonWriter(GpkgWriter):
+class GeoJsonWriter(GpkgWriter, FileWriterMixin):
 	fiona_driver = FIONA_DRIVER
 	target_regexp = PATH_REGEXP
 	layername = None
@@ -32,11 +33,6 @@ class GeoJsonWriter(GpkgWriter):
 		super(GpkgWriter, self).__init__(target, sync, **kwargs)
 		name_match = re.match(self.target_regexp, self.target)
 		assert name_match, f'filename {target} is not GeoJSON path'
-
-	def _cancel(self):
-		if self._handler is not None:
-			self._close_handler()
-			os.unlink(self.target)
 
 
 class GeoJsonDriver(GpkgDriver):

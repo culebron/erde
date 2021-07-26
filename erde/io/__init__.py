@@ -5,6 +5,7 @@ import sys
 
 
 def _try_gdf(df, geometry_columns=('geometry', 'WKT'), crs=None):
+	from shapely.errors import WKTReadingError
 	if isinstance(geometry_columns, str):
 		geometry_columns = [geometry_columns]
 
@@ -13,10 +14,10 @@ def _try_gdf(df, geometry_columns=('geometry', 'WKT'), crs=None):
 		if k in df:
 			try:
 				df['geometry'] = df[k].apply(wkt.loads)
-				if k != 'geometry': df.pop(k)
-			except (TypeError, AttributeError):
+			except (TypeError, AttributeError, WKTReadingError):
 				print("warning: can't transform empty or broken geometry", file=sys.stderr)
 			else:
+				if k not in geometry_columns: df.pop(k)
 				geometry_ok = True
 
 	if geometry_ok:
