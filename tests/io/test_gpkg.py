@@ -128,6 +128,7 @@ def test_write_error():
 		sleep(1)
 		print(f'gpkg test write error end s={s}')
 
+
 def test_write_empty():
 	import fiona
 	for s, ss in {True: 'sync', False: 'async'}.items():
@@ -141,3 +142,18 @@ def test_write_empty():
 		assert os.path.exists(ds_path)
 		layers = fiona.listlayers(ds_path)
 		assert ds_name in layers
+
+
+def test_stream_guess_layer():
+	from erde import read_stream
+	# must find the only layer
+	for df in read_stream(d + 'layer-name-different.gpkg'):
+		assert len(df) > 0
+
+	# must guess by filename
+	for df in read_stream(d + 'guessable-layer.gpkg'):
+		assert len(df) > 0
+
+	# if 2 layers and none like file name, raises exception
+	with pytest.raises(RuntimeError):
+		read_stream(d + 'unguessable-layer.gpkg')
