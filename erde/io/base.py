@@ -38,7 +38,6 @@ class BaseReader:
 	source_regexp = None
 
 	def __init__(self, source, geometry_filter=None, chunk_size: int = 10_000, sync: bool = False, pbar: bool = True, queue_size=10, **kwargs):
-		print('cs1', source, chunk_size)
 		if self.source_regexp:
 			self.source_match = re.match(self.source_regexp, source)
 			assert self.source_match, f'File name {source} is not a valid {self.fiona_driver} path.'
@@ -46,7 +45,6 @@ class BaseReader:
 		self.source = source
 		assert chunk_size is None or chunk_size > 0, "chunk_size must be positive int or None"
 		self.chunk_size = chunk_size
-		print('cs', source, self.chunk_size)
 		self.queue_size = queue_size
 		self._sync = sync or ESYNC
 		self.pbar = pbar
