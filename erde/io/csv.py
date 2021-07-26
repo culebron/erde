@@ -26,15 +26,15 @@ class CsvReader(BaseReader):
 		properties = {k: df[k].dtype for k in self.fieldnames}
 		self.schema = {'properties': properties}
 
-		geom_col = None
+		self.geom_col = None
 		if 'geometry' in properties:
-			geom_col = 'geometry'
+			self.geom_col = 'geometry'
 		elif 'WKT' in properties:
-			geom_col = 'WKT'
+			self.geom_col = 'WKT'
 
-		if geom_col:
-			properties.pop(geom_col)
-			self.schema['geometry'] = loads(df[geom_col][0]).geom_type
+		if self.geom_col:
+			properties.pop(self.geom_col)
+			self.schema['geometry'] = loads(df[self.geom_col][0]).geom_type
 
 		with open(self.source) as f:
 			self.total_rows = sum(1 for i in f)
@@ -51,24 +51,20 @@ class CsvReader(BaseReader):
 							data = self.reader.get_chunk()
 							data.index = self._range_index(data)
 
-							if self.fieldnames is None: # field names not available before read # и пофиг пока
-								self.fieldnames = list(data) # field names as in file, not in df :(
-
-							if 'geometry' not in data and 'WKT' not in data:
+							if self.geom_col is None:
 								yield data
 								reader_bar.update(len(data))
 								continue
 
-							text_geometry = 'geometry' if 'geometry' in data else 'WKT'
 							try:
-								geom = data[text_geometry].apply(loads)
+								geom = data[self.geom_col].apply(loads)
 							except shapely.errors.WKTReadingError:
 								# ignore bad WKT (might be not wkt at all)
 								yield data
 								reader_bar.update(len(data))
 								continue
 
-							data.pop(text_geometry)
+							data.pop(self.geom_col)
 							data['geometry'] = geom
 
 							yield gpd.GeoDataFrame(data, crs=self.crs)

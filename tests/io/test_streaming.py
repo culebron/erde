@@ -3,7 +3,7 @@ import pytest
 d = 'tests/io/data/'
 
 def test_stream_reading():
-	from erde.io import read_stream, write_stream, select_driver, drivers
+	from erde import read_stream, write_stream, io
 
 	for fmt in ['csv', 'geojson', 'gpkg', 'geojsonl.json', 'shp']:
 		with write_stream(f'/tmp/points-stream.{fmt}', sync=True, chunk_size=2) as wr:
@@ -12,6 +12,6 @@ def test_stream_reading():
 				wr(df)
 
 			path = f'not_existing_path.{fmt}'
-			assert select_driver(path)[0] == drivers[fmt]
+			assert io.select_driver(path)[0] == io.drivers[fmt]
 			with pytest.raises(FileNotFoundError):
 				read_stream(path)

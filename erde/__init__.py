@@ -123,3 +123,27 @@ def command(func):
 	# otherwise it's an import
 	mod._argh = decorated
 	return func
+
+
+def read_df(path, *args, **kwargs):
+	from .io import select_driver
+	dr, pm = select_driver(path)
+	return dr.read_df(path, pm, *args, **kwargs)
+
+
+def write_df(df, path, *args, **kwargs):
+	from .io import select_driver
+	dr, pm = select_driver(path)
+	dr.write_df(df, path, pm, *args, **kwargs)
+
+
+def read_stream(path, geometry_filter=None, chunk_size=1, pbar=False, sync=True, *args, **kwargs):
+	from .io import select_driver
+	dr, pm = select_driver(path)
+	return dr.read_stream(path, geometry_filter, chunk_size, pbar, sync, *args, **kwargs)
+
+
+def write_stream(path, sync=True, *args, **kwargs):
+	from .io import select_driver
+	dr, pm = select_driver(path)
+	return dr.write_stream(path, sync=sync, *args, **kwargs)

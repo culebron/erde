@@ -24,13 +24,13 @@ def test_base_reader():
 
 
 	# calling BaseReader, with path to file as geometry_filter.
-	with patch('erde.io.read_stream', return_value=dfs) as mock:
+	with patch('erde.read_stream', return_value=dfs) as mock:
 		BaseReader('mock source', 'path_to_geofile.gpkg')
 
 	mock.assert_called_with('path_to_geofile.gpkg', chunk_size=1, pbar=False, sync=True)
 
 	# cover the case where geometry_filter is None
-	with patch('erde.io.read_stream', return_value=dfs) as mock:
+	with patch('erde.read_stream', return_value=dfs) as mock:
 		br = BaseReader('another mock')
 
 	mock.assert_not_called()

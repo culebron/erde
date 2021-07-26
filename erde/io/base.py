@@ -64,7 +64,7 @@ class BaseReader:
 		if geometry_filter is None or isinstance(geometry_filter, BaseGeometry):
 			g_ = [geometry_filter]
 		elif isinstance(geometry_filter, str):
-			from erde.io import read_stream
+			from erde import read_stream
 			geo_filter_stream = read_stream(geometry_filter, chunk_size=1, pbar=False, sync=True)
 			geo_filter_total = len(geo_filter_stream)
 			g_ = (df['geometry'].values[0] for df in geo_filter_stream)

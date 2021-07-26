@@ -34,26 +34,6 @@ def select_driver(path):
 		raise ValueError(f'{path}: file format not recognized')
 
 
-def read_df(path, *args, **kwargs):
-	dr, pm = select_driver(path)
-	return dr.read_df(path, pm, *args, **kwargs)
-
-
-def write_df(df, path, *args, **kwargs):
-	dr, pm = select_driver(path)
-	dr.write_df(df, path, pm, *args, **kwargs)
-
-
-def read_stream(path, geometry_filter=None, chunk_size=1, pbar=False, sync=True, *args, **kwargs):
-	dr, pm = select_driver(path)
-	return dr.read_stream(path, geometry_filter, chunk_size, pbar, sync, *args, **kwargs)
-
-
-def write_stream(path, sync=True, *args, **kwargs):
-	dr, pm = select_driver(path)
-	return dr.write_stream(path, sync=sync, *args, **kwargs)
-
-
 def check_path_exists(path):
 	if not os.path.exists(path):  # immediately raise error to avoid crashing much later
 			raise FileNotFoundError(f'file {path} does not exist')

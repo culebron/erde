@@ -1,7 +1,6 @@
 from erde.io.gpkg import driver as dr
-from erde.io import read_df
+from erde import read_df
 from time import sleep
-from unittest import mock
 import errno
 import geopandas as gpd
 import os
