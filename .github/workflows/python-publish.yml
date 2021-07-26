@@ -38,6 +38,7 @@ jobs:
         sudo apt-get update && sudo apt-get install libgdal-dev -y
         pip install shapely pygeos --no-binary shapely --no-binary pygeos
         pip install -r tests-require.txt
+        pip install pytest-cov
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
     - name: install erde
       run: |
@@ -51,7 +52,7 @@ jobs:
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics --ignore=W191
     - name: Test with pytest
       run: |
-        pytest . --cov=erde
+        pytest --cov=erde
         coverage html
     - name: Archive test coverage report
       uses: actions/upload-artifact@v2
