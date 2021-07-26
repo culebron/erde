@@ -8,3 +8,5 @@ dist
 .coverage
 htmlcov
 __version__.py
+.eggs
+.docs
