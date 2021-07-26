@@ -1,5 +1,5 @@
 from contextlib import contextmanager
-from erde.io.base import BaseReader, BaseWriter
+from erde.io.base import BaseReader, BaseWriter, BaseDriver
 from shapely.geometry import Point, LineString, Polygon
 from time import sleep
 from unittest import mock
@@ -59,6 +59,14 @@ def test_raise_notimplemented():
 
 		with pytest.raises(NotImplementedError):
 			itr.stats('test')
+
+	# base driver has read_df and write_df methods
+	with pytest.raises(NotImplementedError):
+		BaseDriver.read_df('test')
+
+	with pytest.raises(NotImplementedError):
+		BaseDriver.write_df('test')
+
 
 	with BaseWriter('/tmp/not-implemented-writer.gpkg', sync=False) as wr:
 		for method in ('_write_sync', '_open_handler', '_cancel', '_close_handler'):

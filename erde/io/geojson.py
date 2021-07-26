@@ -1,3 +1,4 @@
+from . import check_path_exists
 from .gpkg import GpkgDriver, GpkgReader, GpkgWriter
 import fiona
 import os
@@ -13,6 +14,7 @@ class GeoJsonReader(GpkgReader):
 
 	def __init__(self, source, geometry_filter=None, chunk_size:int=10_000, sync:bool=False, pbar:bool=True, **kwargs):
 		# this __init__ repeats part of GPKG driver
+		check_path_exists(source)
 		super(GpkgReader, self).__init__(source, geometry_filter, chunk_size, sync, pbar, **kwargs)
 
 		try:

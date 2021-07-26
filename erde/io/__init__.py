@@ -1,5 +1,6 @@
 from shapely import wkt
 import geopandas as gpd
+import os
 import sys
 
 
@@ -24,26 +25,38 @@ def _try_gdf(df, geometry_columns=('geometry', 'WKT'), crs=None):
 	return df
 
 
-def read_df(path, *args, **kwargs):
-	for driver in drivers:
+def select_driver(path):
+	for driver in drivers.values():
 		path_match = driver.can_open(path)
 		if path_match:
-			return driver.read_df(path, path_match, *args, **kwargs)
+			return driver, path_match
+	else:
+		raise ValueError(f'{path}: file format not recognized')
 
-	raise ValueError(f'{path}: file format not recognized')
+
+def read_df(path, *args, **kwargs):
+	dr, pm = select_driver(path)
+	return dr.read_df(path, pm, *args, **kwargs)
+
 
 def write_df(df, path, *args, **kwargs):
-	for driver in drivers:
-		path_match = driver.can_open(path)
-		if path_match:
-			return driver.write_df(df, path, path_match, *args, **kwargs)
-
-	raise ValueError(f'{path}: file format not recognized')
+	dr, pm = select_driver(path)
+	dr.write_df(df, path, pm, *args, **kwargs)
 
 
-def read_stream(path, chunk_size=1, pbar=False, sync=True):
-	return []  # TODO: implement
+def read_stream(path, geometry_filter=None, chunk_size=1, pbar=False, sync=True, *args, **kwargs):
+	dr, pm = select_driver(path)
+	return dr.read_stream(path, geometry_filter, chunk_size, pbar, sync, *args, **kwargs)
 
+
+def write_stream(path, sync=True, *args, **kwargs):
+	dr, pm = select_driver(path)
+	return dr.write_stream(path, sync=sync, *args, **kwargs)
+
+
+def check_path_exists(path):
+	if not os.path.exists(path):  # immediately raise error to avoid crashing much later
+			raise FileNotFoundError(f'file {path} does not exist')
 
 from . import csv, gpkg, geojson, geojsonseq, postgres, shp, xls
-drivers = [csv.driver, gpkg.driver, geojson.driver, geojsonseq.driver, postgres.driver, shp.driver, xls.driver]
+drivers = {'csv': csv.driver, 'gpkg': gpkg.driver, 'geojson': geojson.driver, 'geojsonl.json': geojsonseq.driver, 'postgres': postgres.driver, 'shp': shp.driver, 'xls': xls.driver}

@@ -25,22 +25,22 @@ def silentremove(filename):
 
 def test_read():
 	for s in (True, False):
-		reader = dr.open_read(points_file, sync=s)
+		reader = dr.read_stream(points_file, sync=s)
 		for df in reader:
 			assert isinstance(df, gpd.GeoDataFrame)
 
 def test_bad_file():
 	not_a_gpkg = '/tmp/not-a-gpkg.gpkg'
 	for s in (True, False):
-		with pytest.raises(RuntimeError):
-			dr.open_read('/tmp/not-a-gpkg-2.gpkg', sync=s)
+		with pytest.raises(FileNotFoundError):
+			dr.read_stream('/tmp/not-a-gpkg-2.gpkg', sync=s)
 
 		# empty file
 		with open(not_a_gpkg, 'w') as f:
 			f.write('')
 
 		with pytest.raises(RuntimeError):
-			dr.open_read(not_a_gpkg, sync=s)
+			dr.read_stream(not_a_gpkg, sync=s)
 
 def test_exception_in_read():
 	class TmpReader(dr.reader):
@@ -70,7 +70,7 @@ def test_geometry_filter():
 		expected_names = set('ACDFGI')
 
 		for test_filter in (filter_source, filter_df, filter_geom, None):
-			stream = dr.open_read(match_points, test_filter, chunk_size=100_000, sync=s)
+			stream = dr.read_stream(match_points, test_filter, chunk_size=100_000, sync=s)
 			for df in stream:
 				assert len(df) > 0
 				if test_filter is not None:  # when None, the set is bigger than expected_names
@@ -90,8 +90,8 @@ def test_write():
 			os.unlink(tmp_points)
 
 		assert not os.path.exists(tmp_points), f"could not delete file {tmp_points} before test"
-		with dr.open_write(tmp_points, sync=s) as w:
-			for df in dr.open_read(match_points, chunk_size=10):
+		with dr.write_stream(tmp_points, sync=s) as w:
+			for df in dr.read_stream(match_points, chunk_size=10):
 				w(df)
 
 		assert os.path.exists(tmp_points), f"file {tmp_points} does not exist, but should have been created"
@@ -108,8 +108,8 @@ def test_write_error():
 			pass
 
 		with pytest.raises(RuntimeError):
-			with dr.open_write(tmp_points, sync=s) as w:
-				rd = dr.open_read(points_file, chunk_size=10, sync=s)
+			with dr.write_stream(tmp_points, sync=s) as w:
+				rd = dr.read_stream(points_file, chunk_size=10, sync=s)
 				for i, df in enumerate(rd):
 					if i == 2:
 						print('raising exception')
@@ -136,7 +136,7 @@ def test_write_empty():
 		ds_path = f'/tmp/{ds_name}.gpkg'
 		silentremove(ds_path)
 
-		with dr.open_write(ds_path):
+		with dr.write_stream(ds_path):
 			pass
 
 		assert os.path.exists(ds_path)

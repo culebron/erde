@@ -1,11 +1,12 @@
+from . import check_path_exists
 from .base import BaseDriver, BaseReader, BaseWriter
 from collections import OrderedDict
 from erde import dprint
 from time import sleep
+import fiona
 import geopandas as gpd
 import os
 import re
-import fiona
 
 FIONA_DRIVER = 'GPKG'
 PATH_REGEXP = r'^(?P<file_path>(?:.*/)?(?P<file_name>(?:.*/)?(?P<file_own_name>.*)\.(?P<extension>gpkg)))(?:\:(?P<layer_name>[a-z0-9_-]+))?$'
@@ -15,6 +16,7 @@ class GpkgReader(BaseReader):
 	source_regexp = PATH_REGEXP
 
 	def __init__(self, source, geometry_filter=None, chunk_size: int = 10_000, sync: bool = False, pbar: bool = True, **kwargs):
+		check_path_exists(source)
 		super().__init__(source, geometry_filter, chunk_size, sync, pbar, **kwargs)
 
 		g = self.source_match.groupdict()

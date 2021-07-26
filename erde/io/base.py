@@ -361,11 +361,11 @@ class BaseDriver:
 		return source_df
 
 	@classmethod
-	def open_read(cls, *args, **kwargs):
+	def read_stream(cls, *args, **kwargs):
 		return cls.reader(*args, **kwargs)
 
 	@classmethod
-	def open_write(cls, *args, **kwargs):
+	def write_stream(cls, *args, **kwargs):
 		return cls.writer(*args, **kwargs)
 
 	@classmethod

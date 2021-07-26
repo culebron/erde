@@ -1,4 +1,6 @@
+from . import check_path_exists
 from .geojson import GeoJsonDriver, GeoJsonReader, GeoJsonWriter
+from .gpkg import GpkgWriter, GpkgReader
 import fiona
 import os
 import re
@@ -12,7 +14,8 @@ class ShpReader(GeoJsonReader):
 	layername = None
 
 	def __init__(self, source, geometry_filter=None, chunk_size:int=10_000, sync:bool=False, pbar:bool=True, **kwargs):
-		super(GeoJsonReader, self).__init__(source, geometry_filter, chunk_size, sync, pbar, **kwargs)
+		check_path_exists(source)
+		super(GpkgReader, self).__init__(source, geometry_filter, chunk_size, sync, pbar, **kwargs)
 
 		try:
 			self._read_schema()
@@ -26,7 +29,7 @@ class ShpWriter(GeoJsonWriter):
 	layername = None
 
 	def __init__(self, target, sync:bool=False, **kwargs):
-		super(GeoJsonWriter, self).__init__(target, sync, **kwargs)
+		super(GpkgWriter, self).__init__(target, sync, **kwargs)
 		name_match = re.match(self.target_regexp, self.target)
 		assert name_match, f'filename {target} is not GeoJSON path'
 

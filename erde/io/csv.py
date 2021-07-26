@@ -1,11 +1,12 @@
+from . import check_path_exists
 from .base import BaseDriver, BaseReader, BaseWriter
 from csv import field_size_limit
 from shapely.wkt import loads
-import shapely.errors
-import pandas as pd
 import geopandas as gpd
 import io
 import os
+import pandas as pd
+import shapely.errors
 
 
 PATH_REGEXP = r'^.*\.(csv|txt)$'
@@ -14,9 +15,7 @@ class CsvReader(BaseReader):
 	source_regexp = PATH_REGEXP
 
 	def __init__(self, source, geometry_filter=None, chunk_size:int=10_000, sync:bool=False, skip=0, sep=',', pbar=True):
-		if not os.path.exists(source):  # immediately raise error to avoid crashing much later
-			raise FileNotFoundError(f'file {source} does not exist')
-
+		check_path_exists(source)
 		self.sep = sep  # needed in _read_schema
 		super().__init__(source, geometry_filter, chunk_size or 10_000, sync=sync, pbar=pbar)
 
