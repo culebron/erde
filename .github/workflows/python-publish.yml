@@ -51,4 +51,9 @@ jobs:
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics --ignore=W191
     - name: Test with pytest
       run: |
-        pytest
+        pytest --cov=erde && coverage html
+    - name: Archive test coverage report
+      uses: actions/upload-artifact@v2
+      with:
+        name: code-coverage-report
+        path: htmlcov
