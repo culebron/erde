@@ -1,25 +1,29 @@
-#!/usr/bin/python3.6
-
 """Line-delimited GeoJSON"""
-
 from .geojson import GeoJsonReader, GeoJsonWriter, GeoJsonDriver
-from . import FORMATS
 
-_format_re = FORMATS['geojsonseq']
+FIONA_DRIVER = 'GeoJSONSeq'
+PATH_REGEXP = r'^(?P<file_path>(?:.*/)?(?P<file_own_name>.*)\.(?P<extension>geojsonl\.json|geojsonl))$'
 
 class GeoJsonSeqReader(GeoJsonReader):
-	fiona_driver = 'GeoJSONSeq'
-	name_regexp = _format_re
+	fiona_driver = FIONA_DRIVER
+	source_regexp = PATH_REGEXP
 
 class GeoJsonSeqWriter(GeoJsonWriter):
-	fiona_driver = 'GeoJSONSeq'
-	target_regexp = _format_re
+	fiona_driver = FIONA_DRIVER
+	target_regexp = PATH_REGEXP
 
 
-class GeoJsonDriver(GeoJsonDriver):
+class GeoJsonSeqDriver(GeoJsonDriver):
 	reader = GeoJsonSeqReader
 	writer = GeoJsonSeqWriter
-	source_extension = None
-	source_regexp = _format_re
+	path_regexp = PATH_REGEXP
 
-driver = GeoJsonDriver
+	@staticmethod
+	def read_df(path, path_match, crs=None, *args, **kwargs):
+		return GeoJsonSeqDriver.gpd_read(path, crs, driver=FIONA_DRIVER, *args, **kwargs)
+
+	@staticmethod
+	def write_df(df, path, path_match, *args, driver=FIONA_DRIVER, **kwargs):
+		GeoJsonDriver.write_df(df, path, path_match, *args, driver=driver, **kwargs)
+
+driver = GeoJsonSeqDriver

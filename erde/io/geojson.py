@@ -1,23 +1,18 @@
-#!/usr/bin/python3.6
-
 from .gpkg import GpkgDriver, GpkgReader, GpkgWriter
-from . import FORMATS
 import fiona
 import os
 import re
 
-_format_re = FORMATS['geojson']
+FIONA_DRIVER = 'GeoJSON'
+PATH_REGEXP = r'^(?P<file_path>(?:.*/)?(?P<file_own_name>.*)\.(?P<extension>geojson))$'
 
 class GeoJsonReader(GpkgReader):
-	fiona_driver = 'GeoJSON'
-	name_regexp = _format_re
+	fiona_driver = FIONA_DRIVER
+	source_regexp = PATH_REGEXP
 	layername = None
 
 	def __init__(self, source, geometry_filter=None, chunk_size:int=10_000, sync:bool=False, pbar:bool=True, **kwargs):
-		chunk_size = chunk_size or 10_000
-		name_match = re.match(self.name_regexp, source)
-		assert name_match, f'File name {source} is not a valid {self.fiona_driver} path.'
-
+		# this __init__ repeats part of GPKG driver
 		super(GpkgReader, self).__init__(source, geometry_filter, chunk_size, sync, pbar, **kwargs)
 
 		try:
@@ -27,8 +22,8 @@ class GeoJsonReader(GpkgReader):
 
 
 class GeoJsonWriter(GpkgWriter):
-	fiona_driver = 'GeoJSON'
-	target_regexp = _format_re
+	fiona_driver = FIONA_DRIVER
+	target_regexp = PATH_REGEXP
 	layername = None
 
 	def __init__(self, target, sync:bool=False, **kwargs):
@@ -45,8 +40,18 @@ class GeoJsonWriter(GpkgWriter):
 class GeoJsonDriver(GpkgDriver):
 	reader = GeoJsonReader
 	writer = GeoJsonWriter
-	source_extension = 'geojson'
-	source_regexp = None
+	path_regexp = PATH_REGEXP
+
+	@staticmethod
+	def read_df(path, path_match, crs=None, *args, **kwargs):
+		return GeoJsonDriver.gpd_read(path, crs, driver=FIONA_DRIVER, *args, **kwargs)
+
+	@staticmethod
+	def write_df(df, path, path_match, *args, driver=FIONA_DRIVER, **kwargs):
+		if os.path.exists(path):
+			os.unlink(path)
+
+		df.to_file(path, driver=driver, encoding='utf-8')
 
 
 driver = GeoJsonDriver

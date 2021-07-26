@@ -1,7 +1,4 @@
-#!/usr/bin/python3.6
-
 from .base import BaseDriver, BaseReader, BaseWriter
-from . import FORMATS
 from csv import field_size_limit
 from shapely.wkt import loads
 import shapely.errors
@@ -11,7 +8,11 @@ import io
 import os
 
 
+PATH_REGEXP = r'^.*\.(csv|txt)$'
+
 class CsvReader(BaseReader):
+	source_regexp = PATH_REGEXP
+
 	def __init__(self, source, geometry_filter=None, chunk_size:int=10_000, sync:bool=False, skip=0, sep=',', pbar=True):
 		if not os.path.exists(source):  # immediately raise error to avoid crashing much later
 			raise FileNotFoundError(f'file {source} does not exist')
@@ -78,6 +79,8 @@ class CsvReader(BaseReader):
 
 
 class CsvWriter(BaseWriter):
+	target_regexp = PATH_REGEXP
+	
 	def __init__(self, target, sync:bool=False, **kwargs):
 		super().__init__(target, sync, **kwargs)
 		field_size_limit(10000000)
@@ -121,10 +124,21 @@ class CsvWriter(BaseWriter):
 
 
 class CsvDriver(BaseDriver):
-	source_extension = None
-	source_regexp = FORMATS['csv']
+	path_regexp = PATH_REGEXP
 	reader = CsvReader
 	writer = CsvWriter
 
+	@staticmethod
+	def read_df(path, path_match, crs=None, geometry_columns=('geometry', 'WKT'), *args, **kwargs):
+		from erde.io import _try_gdf
+		source_df = pd.read_csv(path, **kwargs)
+		return _try_gdf(source_df, geometry_columns, crs)
+
+	@staticmethod
+	def write_df(df, path, path_match, *args, **kwargs):
+		if os.path.exists(path):
+			os.unlink(path)
+
+		df.to_csv(path, index=False)
 
 driver = CsvDriver

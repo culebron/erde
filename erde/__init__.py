@@ -18,8 +18,8 @@ def dprint(*args, **kwargs):
 		print(*args, **kwargs)
 
 def _read(*args, **kwargs):
-	from .io import read_file
-	return read_file(*args, **kwargs)
+	from .io import read_df
+	return read_df(*args, **kwargs)
 
 def _write(*args, **kwargs):
 	from .io import write_file
