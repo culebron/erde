@@ -126,7 +126,7 @@ def command(func):
 		return
 
 	# otherwise it's an import
-	mod._argh = decorated
+	func._argh = decorated
 	return func
 
 
