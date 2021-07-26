@@ -25,8 +25,7 @@ class PostgresDriver(BaseDriver):
 		with connect_postgres(path).begin() as conn:
 			df = pd.read_sql(path_match['table_or_query'], conn)
 
-		gcc = path_match['geometry_columns']
-		if gcc is None:
+		if path_match['geometry_columns'] is None:
 			return df
 
 		gcc = path_match['geometry_columns'].split(',')
