@@ -80,7 +80,7 @@ class CsvReader(BaseReader):
 
 class CsvWriter(BaseWriter):
 	target_regexp = PATH_REGEXP
-	
+
 	def __init__(self, target, sync:bool=False, **kwargs):
 		super().__init__(target, sync, **kwargs)
 		field_size_limit(10000000)
@@ -128,14 +128,14 @@ class CsvDriver(BaseDriver):
 	reader = CsvReader
 	writer = CsvWriter
 
-	@staticmethod
-	def read_df(path, path_match, crs=None, geometry_columns=('geometry', 'WKT'), *args, **kwargs):
+	@classmethod
+	def read_df(cls, path, path_match, crs=None, geometry_columns=('geometry', 'WKT'), *args, **kwargs):
 		from erde.io import _try_gdf
 		source_df = pd.read_csv(path, **kwargs)
 		return _try_gdf(source_df, geometry_columns, crs)
 
-	@staticmethod
-	def write_df(df, path, path_match, *args, **kwargs):
+	@classmethod
+	def write_df(cls, df, path, path_match, *args, **kwargs):
 		if os.path.exists(path):
 			os.unlink(path)
 

@@ -41,13 +41,17 @@ class GeoJsonDriver(GpkgDriver):
 	reader = GeoJsonReader
 	writer = GeoJsonWriter
 	path_regexp = PATH_REGEXP
+	fiona_driver = FIONA_DRIVER
 
-	@staticmethod
-	def read_df(path, path_match, crs=None, *args, **kwargs):
-		return GeoJsonDriver.gpd_read(path, crs, driver=FIONA_DRIVER, *args, **kwargs)
+	@classmethod
+	def read_df(cls, path, path_match, crs=None, *args, **kwargs):
+		return cls.gpd_read(path, crs, driver=cls.fiona_driver, *args, **kwargs)
 
-	@staticmethod
-	def write_df(df, path, path_match, *args, driver=FIONA_DRIVER, **kwargs):
+	@classmethod
+	def write_df(cls, df, path, path_match, *args, driver=None, **kwargs):
+		if driver is None:
+			driver = cls.fiona_driver
+
 		if os.path.exists(path):
 			os.unlink(path)
 

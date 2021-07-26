@@ -17,13 +17,6 @@ class GeoJsonSeqDriver(GeoJsonDriver):
 	reader = GeoJsonSeqReader
 	writer = GeoJsonSeqWriter
 	path_regexp = PATH_REGEXP
-
-	@staticmethod
-	def read_df(path, path_match, crs=None, *args, **kwargs):
-		return GeoJsonSeqDriver.gpd_read(path, crs, driver=FIONA_DRIVER, *args, **kwargs)
-
-	@staticmethod
-	def write_df(df, path, path_match, *args, driver=FIONA_DRIVER, **kwargs):
-		GeoJsonDriver.write_df(df, path, path_match, *args, driver=driver, **kwargs)
+	fiona_driver = FIONA_DRIVER
 
 driver = GeoJsonSeqDriver
