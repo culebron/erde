@@ -18,23 +18,31 @@ def dprint(*args, **kwargs):
 		print(*args, **kwargs)
 
 
-def _read(*args, **kwargs):
-	"""Opens dataframes in CLI script if a parameter is annotated as (g)df."""
-	from .io import read_df
-	return read_df(*args, **kwargs)
+def read_df(path, *args, **kwargs):
+	from .io import select_driver
+	dr, pm = select_driver(path)
+	return dr.read_df(path, pm, *args, **kwargs)
 
 
-def _write(*args, **kwargs):
-	"""Saves output to file if CLI function has output type annotated as (g)df."""
-	from .io import write_file
-	return write_file(*args, **kwargs)
+def write_df(df, path, *args, **kwargs):
+	from .io import select_driver
+	dr, pm = select_driver(path)
+	dr.write_df(df, path, pm, *args, **kwargs)
 
 
 # when you put these types in annotation, @command decorator will use these functions instead of the class instatiations
 TYPE_OPENERS = {
-	pd.DataFrame: _read,
-	gpd.GeoDataFrame: _read
+	pd.DataFrame: read_df,
+	gpd.GeoDataFrame: read_df
 }
+
+@contextmanager
+def _handle_pudb():
+	import pudb
+	try:
+		yield
+	except Exception:
+		pudb.post_mortem()
 
 
 def command(func):
@@ -73,7 +81,6 @@ def command(func):
 
 	sig = inspect.signature(func)
 	has_output_df = sig.return_annotation in (pd.DataFrame, gpd.GeoDataFrame)
-
 	parser = yaargh.ArghParser()
 
 	@wraps(func)
@@ -86,24 +93,16 @@ def command(func):
 				import ipdb
 				stack.enter_context(ipdb.slaunch_ipdb_on_exception())
 			elif PUDB == 1:
-				import pudb
-				@contextmanager
-				def handle_pudb():
-					try:
-						yield
-					except Exception:
-						pudb.post_mortem()
-
-				stack.enter_context(handle_pudb())
+				stack.enter_context(_handle_pudb())
 
 			retval = func(*args, **kwargs)
 			if retval is None:
 				return
 
-			args = parser.parse_args()
 			if has_output_df:
+				args = parser.parse_args()
 				output_file = getattr(args, 'output-file')
-				_write(retval, output_file)
+				write_df(retval, output_file)
 
 		print(f'Total execution time {timedelta(seconds=time.time() - execution_start)}s')
 
@@ -119,27 +118,17 @@ def command(func):
 		for k, par in sig.parameters.items():
 			if par.default is inspect._empty and par.annotation is not inspect._empty:
 				an = par.annotation
-				func = yaargh.decorators.arg(par.name, type=TYPE_OPENERS.get(an, an), default=par.default)(func)
+				decorated = yaargh.decorators.arg(par.name, type=TYPE_OPENERS.get(an, an), default=par.default)(decorated)
 
-		yaargh.set_default_command(parser, func)
+		yaargh.set_default_command(parser, decorated)
 		yaargh.dispatch(parser)
-		return
+		print('decorated!')
+		return decorated
 
 	# otherwise it's an import
 	func._argh = decorated
+	print('not decorated!')
 	return func
-
-
-def read_df(path, *args, **kwargs):
-	from .io import select_driver
-	dr, pm = select_driver(path)
-	return dr.read_df(path, pm, *args, **kwargs)
-
-
-def write_df(df, path, *args, **kwargs):
-	from .io import select_driver
-	dr, pm = select_driver(path)
-	dr.write_df(df, path, pm, *args, **kwargs)
 
 
 def read_stream(path, geometry_filter=None, chunk_size=10_000, pbar=False, sync=True, *args, **kwargs):
