@@ -3,3 +3,4 @@ xlrd
 psycopg2
 openpyxl
 flake8
+pudb
