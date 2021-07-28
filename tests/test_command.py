@@ -60,6 +60,5 @@ def test_cli_call():
 			with mock.patch('erde.PUDB', 1), mock.patch('pudb.post_mortem', mock.MagicMock()):
 				crashing_func2(df)
 
-
 	assert not hasattr(clifunc3, '_argh')
 	assert clifunc3 != clifunc
