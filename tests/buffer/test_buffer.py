@@ -1,7 +1,9 @@
+from unittest import mock
 import pytest
 import geopandas as gpd
 from geopandas.testing import assert_geoseries_equal
 from erde import buffer, read_df
+from shapely.geometry import Point
 
 points_df = read_df('tests/buffer/points.geojson')
 bufs_df = read_df('tests/buffer/buffers.geojson')
@@ -56,3 +58,16 @@ def test_geoseries():
 	# must raise TypeError if data is not geoseries or geodataframe
 	with pytest.raises(TypeError):
 		buffer.buffer(points_df.geometry.values[0], 500)
+
+	# test if cap_style/join_style params are passed to GeoPandasBase.buffer
+	def test_styles(c, j):
+		with mock.patch('geopandas.base.GeoPandasBase.buffer', new=mock.MagicMock(return_value=bufs_df[:1].geometry)) as mck:
+			buffer.buffer(points_df[:1], 750, cap_style=c, join_style=j)
+
+		mck.assert_called_once()
+		ca = mck.call_args
+		assert ca[1]['cap_style'] == c
+		assert ca[1]['join_style'] == j
+
+	test_styles(3, 3)
+	test_styles(2, 2)

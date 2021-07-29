@@ -17,8 +17,8 @@ def buffer(data, radius, dissolve=False, default_crs=None, *args, **kwargs):
 
 	Shapely-specific parameters (see Shapely doc for more info):
 
-	* `cap_style`: int (0, 1, or 2). Style of buffers at ends of lines.
-	* `join_style`: int (0, 1, or 2), style of buffer around corners.
+	* `cap_style`: int (1 - round, 2 - flat, 3 - square). Style of buffers at ends of lines.
+	* `join_style`: int (1 - round, 2 - mitre, 2 - bevel), style of buffer around corners.
 	* `mitre_limit`: float (1..5) how far a sharp join should protrude.
 	"""
 	if not isinstance(data, (gpd.GeoSeries, gpd.GeoDataFrame)):
