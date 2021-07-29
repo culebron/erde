@@ -1,0 +1,16 @@
+{
+"type": "FeatureCollection",
+"name": "points",
+"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
+"features": [
+{ "type": "Feature", "properties": { "name": "A", "number": 1 }, "geometry": { "type": "Point", "coordinates": [ 82.9, 54.9 ] } },
+{ "type": "Feature", "properties": { "name": "B", "number": 2 }, "geometry": { "type": "Point", "coordinates": [ 82.9, 55.0 ] } },
+{ "type": "Feature", "properties": { "name": "C", "number": 3 }, "geometry": { "type": "Point", "coordinates": [ 82.9, 55.1 ] } },
+{ "type": "Feature", "properties": { "name": "D", "number": 1 }, "geometry": { "type": "Point", "coordinates": [ 83.0, 54.9 ] } },
+{ "type": "Feature", "properties": { "name": "E", "number": 2 }, "geometry": { "type": "Point", "coordinates": [ 83.0, 55.0 ] } },
+{ "type": "Feature", "properties": { "name": "F", "number": 3 }, "geometry": { "type": "Point", "coordinates": [ 83.0, 55.1 ] } },
+{ "type": "Feature", "properties": { "name": "G", "number": 1 }, "geometry": { "type": "Point", "coordinates": [ 83.1, 54.9 ] } },
+{ "type": "Feature", "properties": { "name": "H", "number": 2 }, "geometry": { "type": "Point", "coordinates": [ 83.1, 55.0 ] } },
+{ "type": "Feature", "properties": { "name": "I", "number": 3 }, "geometry": { "type": "Point", "coordinates": [ 83.1, 55.1 ] } }
+]
+}
