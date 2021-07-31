@@ -3,7 +3,8 @@
 # aggregation is correct
 # left join works
 
-from erde import read_df, sjoin
+from erde import read_df
+from erde.op import sjoin
 
 pts = read_df('tests/sjoin/points.geojson')
 polys = read_df('tests/sjoin/polys.geojson')

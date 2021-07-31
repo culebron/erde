@@ -143,12 +143,18 @@ def write_stream(path, sync=True, *args, **kwargs):
 
 commands = ['buffer']
 
+import importlib
+
+funcs = {i: yaargh.decorators.named(i)(importlib.import_module(f'erde.op.{i}').main) for i in commands}
+
+__all__ = []
+for k, v in funcs.items():
+	globals()[k] = v
+	__all__.append(k)
+
 def entrypoint():
 	import yaargh
-	import importlib
-
-	cmds = [yaargh.decorators.named(i)(importlib.import_module(f'erde.{i}').main) for i in commands]
 
 	p = yaargh.ArghParser()
-	yaargh.add_commands(p, cmds)
+	yaargh.add_commands(p, funcs.values())
 	yaargh.dispatch(p)
