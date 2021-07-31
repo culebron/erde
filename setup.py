@@ -39,6 +39,6 @@ setup(
         'Topic :: Utilities'
     ],
     packages=find_packages(exclude=['tests.py']),
-    entry_points={'console_scripts': []},
+    entry_points={'console_scripts': ['erde = erde:entrypoint']},
     install_requires=requirements,
 )

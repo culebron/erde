@@ -122,12 +122,10 @@ def command(func):
 
 		yaargh.set_default_command(parser, decorated)
 		yaargh.dispatch(parser)
-		print('decorated!')
 		return decorated
 
 	# otherwise it's an import
 	func._argh = decorated
-	print('not decorated!')
 	return func
 
 
@@ -141,3 +139,16 @@ def write_stream(path, sync=True, *args, **kwargs):
 	from .io import select_driver
 	dr, pm = select_driver(path)
 	return dr.write_stream(path, sync=sync, *args, **kwargs)
+
+
+commands = ['buffer']
+
+def entrypoint():
+	import yaargh
+	import importlib
+
+	cmds = [yaargh.decorators.named(i)(importlib.import_module(f'erde.{i}').main) for i in commands]
+
+	p = yaargh.ArghParser()
+	yaargh.add_commands(p, cmds)
+	yaargh.dispatch(p)

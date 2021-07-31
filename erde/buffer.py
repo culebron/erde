@@ -1,7 +1,9 @@
 import geopandas as gpd
 import numpy as np
+from erde import command
 
-def buffer(data, radius, dissolve=False, default_crs=None, *args, **kwargs):
+@command
+def main(data, radius, dissolve=False, default_crs=None, *args, **kwargs):
 	"""
 	Creates buffer as in shapely.buffer
 	https://shapely.readthedocs.io/en/stable/manual.html#object.buffer
