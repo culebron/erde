@@ -19,12 +19,33 @@ def dprint(*args, **kwargs):
 
 
 def read_df(path, *args, **kwargs):
+	"""Reads the entire file/db table into (Geo)DataFrame.
+
+	Parameters
+	----------
+	path : str
+		Path to file or db/table URL
+	args, kwargs
+		Arguments forwarded to driver function (gpd.read_file, pd.read_csv, etc.)
+	"""
 	from .io import select_driver
 	dr, pm = select_driver(path)
 	return dr.read_df(path, pm, *args, **kwargs)
 
 
 def write_df(df, path, *args, **kwargs):
+	"""Writes entire (Geo)DataFrame into file (layer in a file) and closes it. By default, if file/layer exists, it's overwritten. Drivers like GPKG may support append mode, you need to pass such argument as a keyword argument.
+
+	Parameters
+	----------
+
+	df : pd.DataFrame, gpd.GeoDataFrame
+		Dataframe to write.
+	path : str
+		Target path.
+	args, kwargs
+		Parameters passed to driver function.
+	"""
 	from .io import select_driver
 	dr, pm = select_driver(path)
 	dr.write_df(df, path, pm, *args, **kwargs)
@@ -38,6 +59,7 @@ TYPE_OPENERS = {
 
 @contextmanager
 def _handle_pudb():
+	# pudb exception handler, put here to make patching possible for tests.
 	import pudb
 	try:
 		yield
@@ -130,12 +152,58 @@ def command(func):
 
 
 def read_stream(path, geometry_filter=None, chunk_size=10_000, pbar=False, sync=True, *args, **kwargs):
+	"""Creates a reader object to read files/databases in chunks as dataframes.
+
+	Parameters
+	----------
+	path : str
+		path to a file or a table in a database. The format is detected automatically from the path (see `erde.io` for supported drivers).
+	geometry_filter : optional, shapely.geometry or path to file (will be opened with read_df at once), or GeoSeries, or GeoDataFrame.
+		Geometries to filter the opened source objects.
+	chunk_size : int, default 10_000
+		Maximum number of rows in each dataset.
+	pbar : bool, default False
+		Show progress bar.
+	sync : bool, default True
+		Don't create a new process, read the file in the main process.
+
+	`args` and `kwargs` are passed to drivers, see modules in erde.io.
+
+	To run a reader in a parallel process, use it as a context manager:
+
+		with read_stream(path) as reader:
+			for df in reader: ...
+
+	This can be overridden by `sync=True` option:
+
+		with read_stream(path, sync=True) as reader:
+			for df in reader: ...
+
+	If reader is iterated directly, it will work in the same process:
+
+		for df in read_stream(path): ...
+	"""
 	from .io import select_driver
 	dr, pm = select_driver(path)
 	return dr.read_stream(path, geometry_filter, chunk_size, pbar, sync, *args, **kwargs)
 
 
 def write_stream(path, sync=True, *args, **kwargs):
+	"""Creates a writer object (context manager) to write multiple dataframes into one file. Must be used as context manager.
+
+	Parameters
+	----------
+	path : str, filename or path to database table
+	sync : bool, default True
+		Set to `False` to run the writer in the background process.
+	args, kwargs : parameters passed to writer driver (see erde.io modules)
+
+	Example:
+
+		with write_stream('/tmp/my_file.gpkg') as write:
+			for df in data_generator():
+				write(df)
+	"""
 	from .io import select_driver
 	dr, pm = select_driver(path)
 	return dr.write_stream(path, sync=sync, *args, **kwargs)
@@ -148,6 +216,8 @@ import importlib
 funcs = {i: yaargh.decorators.named(i)(importlib.import_module(f'erde.op.{i}').main) for i in commands}
 
 __all__ = []
+# creating import shortcuts for commands, e.g.: `erde.op.buffer.main` => `erde.buffer`
+# note for devs: this imports all modules in op, hence they should not import many other libraries in module root. A lazy import would work, but it'll hide funcs signatures.
 for k, v in funcs.items():
 	globals()[k] = v
 	__all__.append(k)

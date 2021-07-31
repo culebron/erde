@@ -27,13 +27,13 @@ def test_geoseries():
 	assert isinstance(bufs2_df, gpd.GeoDataFrame)
 	assert_geoseries_equal(bufs_df.geometry, bufs2_df.geometry, check_less_precise=True)
 	assert len(points_df) == len(bufs2_df)  # same number of geometries (not so with dissolve)
-	assert all(points_df.index == bufs2_df.index)  # same indice
+	assert points_df.index.equals(bufs2_df.index)  # same indice
 	assert bufs2_df.crs == points_df.crs  # same CRS
 
 	# if geoseries, must return geoseries
 	bufs_series = buffer(points_df.geometry, 500, resolution=res)
 	assert isinstance(bufs_series, gpd.GeoSeries)
-	assert all(bufs_series.index == points_df.index)  # same index
+	assert bufs_series.index.equals(points_df.index)  # same indice
 
 	res = 10
 	bufs3_df = buffer(points_df, 500, resolution=res)
