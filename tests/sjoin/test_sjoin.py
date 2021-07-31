@@ -8,6 +8,12 @@ from erde import read_df, sjoin
 pts = read_df('tests/sjoin/points.geojson')
 polys = read_df('tests/sjoin/polys.geojson')
 
+def sets_dict(d):
+	# if a poly has no matching points, sum(name) will be 0 (int)
+	# make it an empty set
+	return {k: set(v) if isinstance(v, str) else set()
+		for k, v in d.items()}
+
 def test_sgroup():
 	j = sjoin.sgroup(polys, pts, {'number': 'sum'})
 	result = j.set_index('name')['number'].to_dict()
@@ -15,11 +21,8 @@ def test_sgroup():
 
 	j = sjoin.sgroup(polys, pts, {'name': 'sum'})
 	result = j.set_index('name')['name_right'].to_dict()
-	for k, v in result.items():
-		# if a poly has no matching points, sum(name) will be 0 (int)
-		# make it an empty set
-		result[k] = set(v) if isinstance(v, str) else set()
-	assert result == {'X': set('CFI'), 'Y': set('ADG'), 'Z': set(), 'W': set('AB')}
+
+	assert sets_dict(result) == sets_dict({'X': 'CFI', 'Y': 'ADG', 'Z': 0, 'W': 'AB'})
 
 
 # slookup
