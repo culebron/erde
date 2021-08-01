@@ -1,5 +1,5 @@
 from contextlib import contextmanager
-from erde import command, read_df
+from erde import autocli, read_df
 from unittest import mock
 import geopandas as gpd
 import pytest
@@ -12,7 +12,7 @@ def test_decorate():
 	def clifunc(input_data: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
 		return input_data[:10]
 
-	clifunc2 = command(clifunc)
+	clifunc2 = autocli(clifunc)
 	assert clifunc2 == clifunc
 	assert hasattr(clifunc2, '_argh')
 
@@ -32,8 +32,8 @@ def test_cli_call():
 	m2 = mock.MagicMock(__name__='__main__')
 	m1.return_value = m2
 	with mock.patch('inspect.getmodule', m1), mock.patch('yaargh.dispatch', mock.MagicMock()):
-		clifunc3 = command(clifunc)
-		crashing_func2 = command(crashing_func)
+		clifunc3 = autocli(clifunc)
+		crashing_func2 = autocli(crashing_func)
 
 		m3 = mock.MagicMock()
 		setattr(m3, 'output-file', '/tmp/test-output-file.gpkg')

@@ -32,9 +32,8 @@ class BaseReader:
 
 		for gdf in GpkgReader(path_to_file):
 			print(gdf)
-
 	"""
-
+	
 	source_regexp = None
 
 	def __init__(self, source, geometry_filter=None, chunk_size: int = 10_000, sync: bool = False, pbar: bool = True, queue_size=10, **kwargs):

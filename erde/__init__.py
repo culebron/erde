@@ -51,7 +51,7 @@ def write_df(df, path, *args, **kwargs):
 	dr.write_df(df, path, pm, *args, **kwargs)
 
 
-# when you put these types in annotation, @command decorator will use these functions instead of the class instatiations
+# when you put these types in annotation, @autocli decorator will use these functions instead of the class instatiations
 TYPE_OPENERS = {
 	pd.DataFrame: read_df,
 	gpd.GeoDataFrame: read_df
@@ -67,7 +67,7 @@ def _handle_pudb():
 		pudb.post_mortem()
 
 
-def command(func):
+def autocli(func):
 	"""
 	Turns func into command-line script with (ya)argh. Automatically opens GeoDataFrames and DataFrames from supported file formats.
 
@@ -77,7 +77,7 @@ def command(func):
 
 	E.g. myscript.py:
 
-		@command
+		@autocli
 		def main(input_df: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
 			return input_df
 
@@ -126,16 +126,13 @@ def command(func):
 				output_file = getattr(args, 'output-file')
 				write_df(retval, output_file)
 
-		print(f'Total execution time {timedelta(seconds=time.time() - execution_start)}s')
+		print(f'Total execution time {str(timedelta(seconds=time.time() - execution_start))[:-5]}s')
 
 	# check if frame is __main__
 	frm = inspect.stack()[1]
 	mod = inspect.getmodule(frm[0])
 	if mod.__name__ == '__main__':
 		# if so, it's command line call, check if output argument is needed
-		if has_output_df:
-			parser.add_argument('output-file')
-
 		# wrap arguments if their types are in TYPE_OPENERS
 		for k, par in sig.parameters.items():
 			if par.default is inspect._empty and par.annotation is not inspect._empty:
@@ -143,6 +140,9 @@ def command(func):
 				decorated = yaargh.decorators.arg(par.name, type=TYPE_OPENERS.get(an, an), default=par.default)(decorated)
 
 		yaargh.set_default_command(parser, decorated)
+		if has_output_df: # add output-file as the last argument
+			parser.add_argument('output-file')
+
 		yaargh.dispatch(parser)
 		return decorated
 

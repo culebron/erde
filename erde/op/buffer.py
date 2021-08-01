@@ -1,8 +1,8 @@
 import geopandas as gpd
 import numpy as np
-from erde import command
+from erde import autocli
 
-@command
+@autocli
 def main(data, radius, dissolve=False, default_crs=None, *args, **kwargs):
 	"""
 	Creates buffer as in shapely.buffer
