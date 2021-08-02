@@ -32,12 +32,11 @@ def sjfull(left_df, right_df, left_on='geometry', right_on='geometry', suffixes=
 		How geometries should match, e.g. left-contains-right.
 	"""
 
-	m = _sj(left_df, right_df, left_on, right_on, op, join).drop('geometry', axis=1)
-
-	l_ind = m.index if join != 'right' else m.index_left
-	m['geometry' + suffixes[0]] = l_ind.map(left_df['geometry'])
-	r_ind = m.index if join == 'right' else m.index_right
-	m['geometry' + suffixes[1]] = r_ind.map(right_df['geometry'])
+	m = _sj(left_df, right_df, left_on, right_on, op, join).drop('geometry', axis=1).reset_index()
+	index_left, index_right = 'index' + suffixes[0], 'index' + suffixes[1]
+	m.rename(columns={'index': index_right if join == 'right' else index_left})
+	m['geometry' + suffixes[0]] = m[index_left].map(left_df['geometry'])
+	m['geometry' + suffixes[1]] = m[index_right].map(right_df['geometry'])
 	return m
 
 

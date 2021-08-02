@@ -1,6 +1,5 @@
 import geopandas as gpd
 import pandas as pd
-import numpy as np
 from shapely.geometry import LineString, Point
 
 def decode_poly(encoded_line):
@@ -34,22 +33,16 @@ def linestring_between(points1, points2):
 	if gs1 and gs2:
 		if not points1.index.equals(points2.index):
 			raise ValueError("points1 and points2 GeoSeries must have same indice")
-
-		df = gpd.GeoDataFrame({'a': points1, 'b': points2}, index=points1.index)
-		return df.apply(lambda r: LineString([r['a'], r['b']]), axis=1)
+		return gpd.GeoSeries([LineString(i) for i in zip(points1, points2)], index=points1.index)
 
 	if len(points1) != len(points2):
 		raise ValueError('points1 and points2 must be the same length')
-	res = [LineString([i]) for i in zip(points1, points2)]
-	if gs1 and gs2:
-		return gpd.GeoSeries(res, index=gs1.index)
-
-	return res
-
+	return [LineString(i) for i in zip(points1, points2)]
 
 
 def series_coslat(geoseries):
 	"""Calculates latittude cosine coefficient for geoseries. The geoseries argument may be any geometry type that has a centroid."""
+	import numpy as np
 	return geoseries.to_crs(3857).centroid.to_crs(4326).y.pipe(np.radians).pipe(np.cos)
 
 

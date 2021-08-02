@@ -34,3 +34,24 @@ def test_linestring_between():
 	hs = sjoin.sjfull(houses, schools, right_on=buffer.main(schools.geometry, 500))
 
 	assert 'geometry_right' in hs and 'geometry' in hs
+	lines = utils.linestring_between(hs['geometry'], hs['geometry_right'])
+	assert isinstance(lines, gpd.GeoSeries)
+	assert lines.index.equals(hs['geometry'].index)
+
+	for i, v in hs['geometry'].items():
+		assert LineString([v, hs['geometry_right'].loc[i]]).equals(lines.loc[i])
+
+	# index is a part of other index => error
+	with pytest.raises(ValueError):
+		utils.linestring_between(hs['geometry'], hs[hs.index < 100]['geometry_right'])
+
+	lst1 = hs['geometry'].tolist()
+	lst2 = hs['geometry_right'].tolist()
+	lines2 = utils.linestring_between(lst1, lst2)
+	assert isinstance(lines2, list)
+	for a, b, c in zip(lst1, lst2, lines2):
+		assert LineString([a, b]) == c
+
+	# different lengths => error
+	with pytest.raises(ValueError):
+		utils.linestring_between(lst1, lst2[:-3])
