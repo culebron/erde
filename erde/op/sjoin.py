@@ -1,12 +1,45 @@
 import geopandas as gpd
 
 
-def sgroup(left_df, right_df, agg, left_on='geometry', right_on='geometry', suffixes=('', '_right'), join='left', op='intersects'):
+def sagg(left_df, right_df, agg, left_on='geometry', right_on='geometry', suffixes=('', '_right'), join='left', op='intersects'):
+	"""Spatial aggregation. Aggregates the `right_df` attributes that spatially match `left_df`. E.g. if `left_df` is regions, and `right_df` is residential bulidings, this function can aggregate residents by regions:
+
+		regions_with_residents = sagg(regions_gdf, buildings_gdf, {'residents': 'sum'})
+
+	Parameters
+	----------
+
+	left_df : GeoDataFrame
+		Main dataframe, by which to aggregate.
+	right_df : GeoDataFrame
+		What dataframe to aggregate.
+	agg : dict
+		What to aggregate, format is the same as in pd.DataFrame.agg or gpd.dissolve.
+	left_on : str or GeoSeries, default 'geometry'
+		Column in the left GeoDataFrame or a GeoSeries with the same index, by which to do spatial join. These are not added anywhere.
+	right_on : str or GeoSeries, default 'geometry'
+		Same in the right GeoDataFrame
+	suffixes : 2-tuple of str, default ('', '_right')
+		Suffixes added if colum names coincide, same as in pd.DataFrame.merge
+	join : str, {'left' or 'inner'}, default 'left'
+		What kind of spatial join is done. Inner keeps only those records in left_df that have >0 matches in right_df. 'left' keeps all, even with 0 matches (aggregated columns will be filled with 0). 'right' makes no sense here and works as 'inner'.
+	op : str, {'intersects', 'within', 'contains'}, default 'intersects'
+		How geometries should match. Default is intersection. 'Within' means left geometry must be within right geometry. 'Contains' means the opposite, the left geometry contains the right one.
+
+	Returns
+	-------
+	GeoDataFrame
+		A new dataframe, same as `left_df`, but with aggregated columns from `agg` argument.
+	"""
+
+	if not isinstance(agg, dict):
+		raise TypeError('agg argument must be a dict')
+
 	if len(agg) == 0:
 		raise ValueError('agg argument can\'t be empty')
 
-	left_tmp = df_on(left_df, left_on)
-	right_tmp = df_on(right_df, right_on)
+	left_tmp = _df_on(left_df, left_on, 'left')
+	right_tmp = _df_on(right_df, right_on, 'right')
 
 	m = gpd.sjoin(left_tmp, right_tmp, op=op, how=join)
 	for k in agg.keys():  # we put the data columns here, because they may contain `geometry` (_right), which gets lost after sjoin.
@@ -17,12 +50,68 @@ def sgroup(left_df, right_df, agg, left_on='geometry', right_on='geometry', suff
 
 
 def slookup(left_df, right_df, columns, left_on='geometry', right_on='geometry', suffixes=('', '_right'), join='left', op='intersects'):
-	return sgroup(left_df, right_df, {k: 'first' for k in columns}, left_on, right_on, suffixes, join, op)
+	"""Spatial lookup. For each row in left_df finds the matching record in right_df and takes the required columns. E.g. for each business, find its region:
+
+		business_plus_region = slookup(business_gdf, regions_gdf, 'name', suffixes=('', '_region'))
+
+	or
+
+		business_plus_region = slookup(business_gdf, regions_gdf, ['name', 'phone_code'], suffixes=('', '_region'))
+
+	Since lookup may find multiple matching geometries of right_df, it takes the first one. GeoPandas sjoin usually keeps the order as in original dataframes, but it's not guaranteed.
+
+	Parameters
+	----------
+
+	left_df : GeoDataFrame
+		For what to look up.
+	right_df : GeoDataFrame
+		Where to look up.
+	columns : str or iterable of str
+		Name(s) of column(s) to lookup and add to the left_df.
+
+	Other parameters are the same as in `sagg`.
+
+	Returns
+	-------
+	GeoDataFrame
+		A new dataframe, same as `left_df`, but also with looked up columns.
+	"""
+
+	if isinstance(columns, str):
+		columns = [columns]
+
+	return sagg(left_df, right_df, {k: 'first' for k in columns}, left_on, right_on, suffixes, join, op)
 
 
 def sfilter(left_df, right_df, left_on='geometry', right_on='geometry', negative=False, op='intersects'):
-	left_tmp = df_on(left_df, left_on)
-	right_tmp = df_on(right_df, right_on)
+	"""Filters left_df by geometries in right_df.
+
+	Parameters
+	----------
+	left_df : GeoDataFrame
+		What to filter.
+	right_df : GeoDataFrame
+		With what to filter.
+	left_on : str or GeoSeries, default 'geometry'
+		Column in the left GeoDataFrame or a GeoSeries with the same index, by which to do spatial join. Not added anywhere.
+
+		For example, these can be buffers instead of original geometries (points), to filter by being within a distance.
+	right_on : str or GeoSeries, default 'geometry'
+		Same in the right GeoDataFrame
+	negative : bool, default False
+		Inverse filtering (keep those that don't match right_df geometries).
+	op : str, {'intersects', 'within', 'contains'}, default 'intersects'
+		How geometries should match. Default is intersection. 'Within' means left geometry must be within right geometry. 'Contains' means the opposite, the left geometry contains the right one.
+
+	Returns
+	-------
+	GeoDataFrame
+		This is filtered `left_df` (a view of the original, not a copy).
+	"""
+
+	left_tmp = _df_on(left_df, left_on, 'left')
+	right_tmp = _df_on(right_df, right_on, 'right')
 
 	m = gpd.sjoin(left_tmp, right_tmp, op=op)
 	isin = left_df.index.isin(m.index)
@@ -30,11 +119,14 @@ def sfilter(left_df, right_df, left_on='geometry', right_on='geometry', negative
 	return left_df[isin]
 
 
-def df_on(df, on):
-	if isinstance(on, gpd.GeoSeries):
-		return gpd.GeoDataFrame({'geometry': on}, index=df.index)
+def _df_on(df, geom, kind):
+	"""Creates a temporary GeoDataFrame with same index and requested geometry (column name or GeoSeries), which is used in the other functions for sjoin."""
+	if isinstance(geom, gpd.GeoSeries):
+		if not geom.index.equals(df.index):
+			raise ValueError(f'{kind}_on GeoSeries index differs from that of {kind} dataframe')
+		return gpd.GeoDataFrame({'geometry': geom}, index=df.index)
 
-	if isinstance(on, str):
-		return df[[on]]
+	if isinstance(geom, str):
+		return df[[geom]]
 
-	raise TypeError('*_on argument must be either string, or GeoSeries')
+	raise TypeError(f'{kind}_on argument must be either string, or GeoSeries')
