@@ -1,6 +1,6 @@
 # Example #1: Using read_df/write_df and Other Utilities
 
-The script calculates demand for each school (in apartments, assuming demography is the same).
+Script [school_demand.py](school_demand.py) calculates demand for each school (in apartments, assuming demography is the same).
 
 First, we determine the "demand": each house apartments are divided by the number of schools in 1 km radius. Then, for each school we sum the demand of houses within 1 km.
 
@@ -16,4 +16,3 @@ Both function guess the format.
 	df = read_df('my_path.csv')
 	# do something
 	write_df(df, 'new_path.gpkg')
-```

@@ -1,6 +1,6 @@
 # Example #2: Command-Line Script
 
-This is the same as example #1, but with CLI utility.
+[School_demand_cli.py](school_demand_cli.py) is the same as example #1, but with CLI utility. It can be called with any paths as arguments.
 
 ## Try Running It
 
