@@ -1,10 +1,10 @@
-# Command-line script
+# Example #2: Command-Line Script
 
 This is the same as example #1, but with CLI utility.
 
-To see a simple working demo:
+## Try Running It
 
-	python3 apartments_num.py houses.geojson schools.geojson /tmp/output.geojson
+	python3 apartments_num.py houses.csv schools.csv /tmp/demand.geojson
 
 To see full help message:
 
@@ -16,7 +16,7 @@ Or provide no arguments to see command arguments:
 
 This function can be reused in other scripts later.
 
-## Minimal boilerplate code
+## Minimal Boilerplate Code
 
 	from erde import autocli
 	from geopandas import GeoDataFrame as gdf
