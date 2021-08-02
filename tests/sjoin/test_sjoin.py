@@ -1,8 +1,3 @@
-# sagg
-# less rows
-# aggregation is correct
-# left join works
-
 import numpy as np
 import pandas as pd
 import pytest

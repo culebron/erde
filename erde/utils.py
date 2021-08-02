@@ -6,12 +6,12 @@ from shapely.geometry import LineString, Point
 def decode_poly(encoded_line):
 	"""Decodes Google polyline format and reverses lat/lon to lon/lat coords. Used for routing with OSRM."""
 	import polyline
-	return [(i[1], i[0]) for i in polyline.decode(encoded_line)]
+	return LineString([(i[1], i[0]) for i in polyline.decode(encoded_line)])
 
 def encode_poly(line):
 	"""Reverses coords to lon/lat and encodes into Google polyline format. Used for routing with OSRM."""
 	import polyline
-	return polyline.encode([(i[1], i[0]) for i in line])
+	return polyline.encode([(i[1], i[0]) for i in line.coords])
 
 
 def linestring_between(points1, points2):
@@ -23,8 +23,15 @@ def linestring_between(points1, points2):
 		Points from which the linestring will begin.
 	points2 : gpd.GeoSeries or iterable with __len__
 		Points at which the linestring will end.
+
+	Returns
+	-------
+	list with
 	"""
-	if isinstance(points1, gpd.GeoSeries) and isinstance(points2, gpd.GeoSeries):
+	gs1 = isinstance(points1, gpd.GeoSeries)
+	gs2 = isinstance(points2, gpd.GeoSeries)
+
+	if gs1 and gs2:
 		if not points1.index.equals(points2.index):
 			raise ValueError("points1 and points2 GeoSeries must have same indice")
 
@@ -33,7 +40,12 @@ def linestring_between(points1, points2):
 
 	if len(points1) != len(points2):
 		raise ValueError('points1 and points2 must be the same length')
-	return [LineString([i]) for i in zip(points1, points2)]
+	res = [LineString([i]) for i in zip(points1, points2)]
+	if gs1 and gs2:
+		return gpd.GeoSeries(res, index=gs1.index)
+
+	return res
+
 
 
 def series_coslat(geoseries):
