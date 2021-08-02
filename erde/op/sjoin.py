@@ -121,6 +121,9 @@ def sfilter(left_df, right_df, left_on='geometry', right_on='geometry', negative
 
 def _df_on(df, geom, kind):
 	"""Creates a temporary GeoDataFrame with same index and requested geometry (column name or GeoSeries), which is used in the other functions for sjoin."""
+	if kind not in ('left', 'right'):
+		raise ValueError("`kind` argument can be 'left' or 'right'")
+
 	if isinstance(geom, gpd.GeoSeries):
 		if not geom.index.equals(df.index):
 			raise ValueError(f'{kind}_on GeoSeries index differs from that of {kind} dataframe')
