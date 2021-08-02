@@ -7,8 +7,8 @@ def _sj(left_df, right_df, left_on, right_on, op, how):
 	return gpd.sjoin(left_tmp, right_tmp, op=op, how=how)
 
 
-def sjfull(left_df, right_df, left_on='geometry', right_on='geometry', left_columns=('geometry',), right_columns=('geometry',), suffixes=('', '_right'), join='inner', op='intersects'):
-	"""Full sjoin: makes sjoin by temporary geometries and takes requested columns from left and right dataframes, including both geometry columns.
+def sjfull(left_df, right_df, left_on='geometry', right_on='geometry', suffixes=('', '_right'), join='inner', op='intersects'):
+	"""Full sjoin: makes sjoin by temporary geometries and puts both geometries in the resulting dataframe.
 
 	Use left_on and right_on to join by, for instance, buffers, but have the original points in the result.
 
@@ -20,10 +20,6 @@ def sjfull(left_df, right_df, left_on='geometry', right_on='geometry', left_colu
 		Column in the left GeoDataFrame or a GeoSeries with the same index, by which to do spatial join. These are not added anywhere.
 	right_on : str or GeoSeries, default 'geometry'
 		Same in the right GeoDataFrame
-	left_columns : list of str, default ['geometry']
-		Columns of the left dataframe to keep in the result.
-	right_columns : list of str, default ['geometry']
-		Columns of the right dataframe to keep in the result.
 	suffixes : 2-tuple of str, default ('', '_right')
 		Suffixes added if colum names coincide, same as in pd.DataFrame.merge
 	join : str, {'left', 'inner', 'right'}, default 'left'
@@ -38,16 +34,10 @@ def sjfull(left_df, right_df, left_on='geometry', right_on='geometry', left_colu
 
 	m = _sj(left_df, right_df, left_on, right_on, op, join).drop('geometry', axis=1)
 
-	for k in left_columns:
-		nk = k + suffixes[0] if k in right_columns else k
-		ind = m.index if join != 'right' else m.index_left
-		m[nk] = ind.map(left_df[k])
-
-	for k in right_columns:
-		nk = k + suffixes[1] if k in left_columns else k
-		ind = m.index_right if join != 'right' else m.index
-		m[nk] = ind.map(left_df[k])
-
+	l_ind = m.index if join != 'right' else m.index_left
+	m['geometry' + suffixes[0]] = l_ind.map(left_df['geometry'])
+	r_ind = m.index if join == 'right' else m.index_right
+	m['geometry' + suffixes[1]] = r_ind.map(right_df['geometry'])
 	return m
 
 
