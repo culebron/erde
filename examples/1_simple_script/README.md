@@ -11,8 +11,9 @@ Both function guess the format.
 * `read_df` detects whether CSV has geometry column, if no, creates a simple `pd.DataFrame`
 * `write_df` saves to required format. Should it be CSV, it converts geometry to WKT.
 
-\b
+````python
 	from erde import read_df, write_df
 	df = read_df('my_path.csv')
 	# do something
 	write_df(df, 'new_path.gpkg')
+```
