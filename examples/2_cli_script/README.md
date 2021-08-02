@@ -4,7 +4,7 @@ This is the same as example #1, but with CLI utility.
 
 ## Try Running It
 
-	python3 apartments_num.py houses.csv schools.csv /tmp/demand.geojson
+	python3 school_demand_cli.py houses.csv schools.csv /tmp/demand.geojson
 
 To see full help message:
 
