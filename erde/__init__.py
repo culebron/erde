@@ -128,21 +128,25 @@ def autocli(func):
 
 		print(f'Total execution time {str(timedelta(seconds=time.time() - execution_start))[:-5]}s')
 
-	# check if frame is __main__
 	frm = inspect.stack()[1]
 	mod = inspect.getmodule(frm[0])
+	for k, par in sig.parameters.items():
+		an = par.annotation
+		if an is not inspect._empty:  # par.default is inspect._empty and   < removed.
+			if par.default is not inspect._empty:
+				names = ['-' + par.name[0], '--' + par.name]
+			else:
+				names = [par.name]
+			decorated = yaargh.decorators.arg(*names, type=TYPE_OPENERS.get(an, an))(decorated)
+
+	if has_output_df: # add output-file as the last argument
+		parser.add_argument('output-file')
+
+	# check if frame is __main__
 	if mod.__name__ == '__main__':
 		# if so, it's command line call, check if output argument is needed
 		# wrap arguments if their types are in TYPE_OPENERS
-		for k, par in sig.parameters.items():
-			if par.default is inspect._empty and par.annotation is not inspect._empty:
-				an = par.annotation
-				decorated = yaargh.decorators.arg(par.name, type=TYPE_OPENERS.get(an, an), default=par.default)(decorated)
-
 		yaargh.set_default_command(parser, decorated)
-		if has_output_df: # add output-file as the last argument
-			parser.add_argument('output-file')
-
 		yaargh.dispatch(parser)
 		return decorated
 
@@ -213,7 +217,7 @@ commands = ['buffer', 'convert']
 
 import importlib
 
-funcs = {i: yaargh.decorators.named(i)(importlib.import_module(f'erde.op.{i}').main) for i in commands}
+funcs = {i: yaargh.decorators.named(i)(importlib.import_module(f'erde.op.{i}').main._argh) for i in commands}
 
 __all__ = []
 # creating import shortcuts for commands, e.g.: `erde.op.buffer.main` => `erde.buffer`
