@@ -3,7 +3,6 @@ import pytest
 import geopandas as gpd
 from geopandas.testing import assert_geoseries_equal
 from erde import read_df, buffer
-from shapely.geometry import Point
 
 points_df = read_df('tests/buffer/points.geojson')
 bufs_df = read_df('tests/buffer/buffers.geojson')
