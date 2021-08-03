@@ -1,12 +1,4 @@
 from erde import autocli, read_stream, write_stream
-import yaargh
-
-
-def toint(val, name):
-	try:
-		return int(val)
-	except ValueError:
-		raise yaargh.CommandError(f'{name} must be int')
 
 
 @autocli
