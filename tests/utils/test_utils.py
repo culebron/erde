@@ -55,3 +55,48 @@ def test_linestring_between():
 	# different lengths => error
 	with pytest.raises(ValueError):
 		utils.linestring_between(lst1, lst2[:-3])
+
+
+def test_coslat():
+	import numpy as np
+	import pandas as pd
+
+	for df in (schools, houses, pts):
+		geom = df.geometry
+		if any(geom.geom_type != 'Point'):
+			geom = geom.to_crs(3857).centroid.to_crs(4326)
+
+		coslat1 = geom.apply(lambda g: np.cos(np.radians(g.y)))
+		coslat2 = utils.coslat(df.geometry)
+		assert isinstance(coslat2, pd.Series)
+		assert all(coslat1 - coslat2 < .000000001)
+
+
+def test_crossjoin():
+	import pandas as pd
+	df1 = pd.DataFrame({'a': list(range(5)), 'b': list(range(5, 10))})
+	df2 = pd.DataFrame({'c': list(range(10, 17))})
+
+	cj = utils.crossjoin(df1, df2)
+	assert len(cj) == len(df1) * len(df2)
+	for a, g in cj.groupby('a'):
+		assert set(g['c']) == set(range(10, 17))
+
+	assert '_tmpkey' not in cj
+
+
+def test_lonlat2gdf():
+	h = houses.copy()
+
+	for x, y in (('lon', 'lat'), ('lng', 'lat'), ('long', 'lat'), ('longitude', 'latitude'), ('x', 'y'), ('X', 'Y')):
+		h[x] = h.geometry.x
+		h[y] = h.geometry.y
+
+		res = utils.lonlat2gdf(h[[x, y]])
+		assert h.geometry.equals(res.geometry)
+
+	h['tst1'] = h.geometry.x
+	h['tst2'] = h.geometry.y
+	with pytest.raises(ValueError):
+		utils.lonlat2gdf(h[['tst1', 'tst2']])
+

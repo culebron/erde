@@ -40,7 +40,7 @@ def linestring_between(points1, points2):
 	return [LineString(i) for i in zip(points1, points2)]
 
 
-def series_coslat(geoseries):
+def coslat(geoseries):
 	"""Calculates latittude cosine coefficient for geoseries. The geoseries argument may be any geometry type that has a centroid."""
 	import numpy as np
 	return geoseries.to_crs(3857).centroid.to_crs(4326).y.pipe(np.radians).pipe(np.cos)
@@ -56,14 +56,6 @@ def crossjoin(df1, df2, **kwargs):
 	df2.drop('_tmpkey', axis=1, inplace=True)
 	res.index = pd.MultiIndex.from_product((df1.index, df2.index))
 	return res
-
-
-def csv2gdf(csv_buff):
-	"""Creates a geodataframe from CSV buffer (opened file or stringio).
-	CSV must have lon&lat columns.
-	"""
-	df = pd.read_csv(csv_buff)
-	return lonlat2gdf(df)
 
 
 def lonlat2gdf(df):
