@@ -217,12 +217,12 @@ commands = ['buffer', 'convert']
 
 import importlib
 
-funcs = {i: yaargh.decorators.named(i)(importlib.import_module(f'erde.op.{i}').main._argh) for i in commands}
+raw_funcs = {i: importlib.import_module(f'erde.op.{i}').main for i in commands}
 
 __all__ = []
 # creating import shortcuts for commands, e.g.: `erde.op.buffer.main` => `erde.buffer`
 # note for devs: this imports all modules in op, hence they should not import many other libraries in module root. A lazy import would work, but it'll hide funcs signatures.
-for k, v in funcs.items():
+for k, v in raw_funcs.items():
 	globals()[k] = v
 	__all__.append(k)
 
@@ -230,5 +230,5 @@ def entrypoint():
 	import yaargh
 
 	p = yaargh.ArghParser()
-	yaargh.add_commands(p, funcs.values())
+	yaargh.add_commands(p, [yaargh.decorators.named(k)(v._argh) for k, v in raw_funcs.items()])
 	yaargh.dispatch(p)
