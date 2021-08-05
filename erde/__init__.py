@@ -174,7 +174,8 @@ def autocli(func):
 			else:
 				names = [par.name]
 
-			decorated = yaargh.decorators.arg(*names, type=TYPE_OPENERS.get(an, an))(decorated)
+			if an != bool:
+				decorated = yaargh.decorators.arg(*names, type=TYPE_OPENERS.get(an, an))(decorated)
 
 	if num_streams > 1:
 		raise TypeError(f'Argument of read_stream type can be only one, got {num_streams} instead')
@@ -248,7 +249,7 @@ def write_stream(path, sync=True, *args, **kwargs):
 	return dr.write_stream(path, sync=sync, *args, **kwargs)
 
 
-commands = ['buffer', 'convert']
+commands = ['buffer', 'convert', 'area']
 
 import importlib
 
