@@ -143,4 +143,8 @@ def main(input_data: read_stream, mode, overview='full', annotations=ANNOTATIONS
 		with ThreadPoolExecutor(max_workers=threads) as tpe:
 			result = tpe.map(fn, input_data['geometry'].values)
 
-	return gpd.GeoDataFrame(result, index=input_data.index)
+	gdf = gpd.GeoDataFrame(result, index=input_data.index)
+	for k in gdf:
+		input_data[k] = gdf[k]
+
+	return input_data
