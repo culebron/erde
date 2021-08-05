@@ -251,7 +251,7 @@ def write_stream(path, sync=True, *args, **kwargs):
 	return dr.write_stream(path, sync=sync, *args, **kwargs)
 
 
-commands = ['buffer', 'convert', 'area', 'length']
+commands = ['buffer', 'convert', 'area', 'length', 'route']
 
 import importlib
 
