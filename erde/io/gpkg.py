@@ -76,7 +76,6 @@ class GpkgReader(BaseReader):
 
 						rows = []
 						try:
-							print('chunk', self.chunk_size)
 							while self.chunk_size is None or len(rows) < self.chunk_size:
 								row = next(iterator)
 								data = row['properties']

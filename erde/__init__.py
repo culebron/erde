@@ -18,6 +18,19 @@ def dprint(*args, **kwargs):
 		print(*args, **kwargs)
 
 
+@contextmanager
+def debug_capture():
+	with ExitStack() as stack:
+		# enter debuggers stack if an env vars is set
+		if IPDB == 1:
+			import ipdb
+			stack.enter_context(ipdb.slaunch_ipdb_on_exception())
+		elif PUDB == 1:
+			stack.enter_context(_handle_pudb())
+
+		yield stack
+
+
 def read_df(path, *args, **kwargs):
 	"""Reads the entire file/db table into (Geo)DataFrame.
 
@@ -71,7 +84,7 @@ def autocli(func):
 	"""
 	Turns func into command-line script with (ya)argh. Automatically opens GeoDataFrames and DataFrames from supported file formats.
 
-	If output type is pd.DataFrame/gpd.GeoDataFrame, the decorated function adds `output-file` argument (required) and automatically saves output to it.
+	If output type is pd.DataFrame/gpd.GeoDataFrame, the decorated function adds `output-path` argument (required) and automatically saves output to it.
 
 	If you import func directly, leaves it as is, but stores for command line entry point.
 
@@ -103,55 +116,77 @@ def autocli(func):
 
 	sig = inspect.signature(func)
 	has_output_df = sig.return_annotation in (pd.DataFrame, gpd.GeoDataFrame)
-	parser = yaargh.ArghParser()
+	has_output_stream = sig.return_annotation == write_stream
+
+	subparser = yaargh.ArghParser()
+	if has_output_stream or has_output_df:
+		subparser.add_argument('output-path')
 
 	@wraps(func)
 	def decorated(*args, **kwargs):
 		execution_start = time.time()
 
-		with ExitStack() as stack:
-			# enter debuggers stack if an env vars is set
-			if IPDB == 1:
-				import ipdb
-				stack.enter_context(ipdb.slaunch_ipdb_on_exception())
-			elif PUDB == 1:
-				stack.enter_context(_handle_pudb())
+		with debug_capture() as stack:
+			if num_streams != 0:  # streaming mode
+				if has_output_stream:
+					output_path = subparser.parse_known_args()[1][-1]
+					kwargs.pop('output-path', None)
+					writer = stack.enter_context(write_stream(output_path, sync=False))
+				reader = stack.enter_context(read_stream(args[id_stream], sync=False))
 
-			retval = func(*args, **kwargs)
-			if retval is None:
-				return
+				for df in reader:
+					args = list(args)
+					args[id_stream] = df
+					retval = func(*args, **kwargs)
+					if has_output_stream and retval is not None:
+						writer(retval)
 
-			if has_output_df:
-				args = parser.parse_args()
-				output_file = getattr(args, 'output-file')
-				write_df(retval, output_file)
+			else:  # simple mode, read entire df, run the function, write enitre output
+				kwargs.pop('output-path', None)  # output-path leaks into kwargs when it's added to parser, so pop it from there just in case
+				retval = func(*args, **kwargs)
+				if retval is None:
+					return
+
+				if has_output_df:
+					output_path = subparser.parse_known_args()[1][-1]
+					write_df(retval, output_path)
 
 		print(f'Total execution time {str(timedelta(seconds=time.time() - execution_start))[:-5]}s')
 
 	frm = inspect.stack()[1]
 	mod = inspect.getmodule(frm[0])
-	for k, par in sig.parameters.items():
+
+	num_streams = 0
+	id_stream = None
+
+	for i, (k, par) in enumerate(sig.parameters.items()):
 		an = par.annotation
 		if an is not inspect._empty:  # par.default is inspect._empty and   < removed.
+			if an == read_stream:  # streaming cli app
+				num_streams += 1  # must count number of read_stream, as only 1 is allowed
+				id_stream = i
+				continue
+
+			# argument with default vaulue = optional, & it must start with dashes
+			# otherwise its considered positional (required), and that contradiction causes an exception
 			if par.default is not inspect._empty:
 				names = ['-' + par.name[0], '--' + par.name]
 			else:
 				names = [par.name]
+
 			decorated = yaargh.decorators.arg(*names, type=TYPE_OPENERS.get(an, an))(decorated)
 
-	if has_output_df: # add output-file as the last argument
-		parser.add_argument('output-file')
+	if num_streams > 1:
+		raise TypeError(f'Argument of read_stream type can be only one, got {num_streams} instead')
 
-	# check if frame is __main__
 	if mod.__name__ == '__main__':
-		# if so, it's command line call, check if output argument is needed
-		# wrap arguments if their types are in TYPE_OPENERS
-		yaargh.set_default_command(parser, decorated)
-		yaargh.dispatch(parser)
-		return decorated
+		yaargh.set_default_command(subparser, decorated)
+		yaargh.dispatch(subparser)
+		return decorated  # returning for test code to check the decorated function
 
 	# otherwise it's an import
 	func._argh = decorated
+	func._has_output = has_output_stream or has_output_df
 	return func
 
 
@@ -228,7 +263,14 @@ for k, v in raw_funcs.items():
 
 def entrypoint():
 	import yaargh
-
 	p = yaargh.ArghParser()
-	yaargh.add_commands(p, [yaargh.decorators.named(k)(v._argh) for k, v in raw_funcs.items()])
+	spa = p.add_subparsers()
+	for k, v in raw_funcs.items():
+		p1 = spa.add_parser(k)
+		p1.set_default_command(yaargh.decorators.named(k)(v._argh))
+		# we must patch the arguments here for output-path, in the subparser of the command, before it's dispatched
+		# otherwise, output-path won't be in positional args
+		if v._has_output:
+			p1.add_argument('output-path')
+
 	yaargh.dispatch(p)

@@ -1,30 +1,35 @@
 import geopandas as gpd
 import numpy as np
-from erde import autocli
+from erde import autocli, read_stream, write_stream
 
 @autocli
-def main(data, radius, dissolve=False, default_crs=None, *args, **kwargs):
+def main(data: read_stream, radius:float, dissolve=False, default_crs=None, **kwargs) -> write_stream:
 	"""
 	Creates buffer as in shapely.buffer
 	https://shapely.readthedocs.io/en/stable/manual.html#object.buffer
 
 	Parameters
 	----------
-
-	* `data` GeoSeries or GeoDataFrame, the geometries to make buffer of.
-	* `radius` float, radius in metres.
-	* `dissolve`: bool, default `False`
-		unite overlapping geometries. Index will be lost. If `data` is a GeoDataFrame, will return a new GeoDataFrame with new index and no other columns.
-	* `resolution`: int, default 10. Number of vertice in a 90° arc.
+	data : GeoSeries or GeoDataFrame
+		The geometries to make buffer of.
+	radius : float
+		Radius in metres.
+	dissolve: bool, default False
+		Unite overlapping geometries. Index will be lost. If `data` is a GeoDataFrame, will return a new GeoDataFrame with new index and no other columns.
+	resolution : int, default 10.
+		Number of vertice in a 90° arc.
 
 	Shapely-specific parameters (see Shapely doc for more info):
 
-	* `cap_style`: int (1 - round, 2 - flat, 3 - square). Style of buffers at ends of lines.
-	* `join_style`: int (1 - round, 2 - mitre, 2 - bevel), style of buffer around corners.
-	* `mitre_limit`: float (1..5) how far a sharp join should protrude.
+	cap_style : int (1 - round, 2 - flat, 3 - square)
+		Style of buffers at ends of lines.
+	join_style : int (1 - round, 2 - mitre, 2 - bevel)
+		Style of buffer around corners.
+	mitre_limit : float (1..5)
+		How far a sharp join should protrude.
 	"""
 	if not isinstance(data, (gpd.GeoSeries, gpd.GeoDataFrame)):
-		raise TypeError('geodata must be GeoSeries/GeoDataFrame')
+		raise TypeError(f'data must be GeoSeries/GeoDataFrame, got {data.__class__} instead')
 
 	if data.crs is None:
 		if default_crs is None:
@@ -36,7 +41,7 @@ def main(data, radius, dissolve=False, default_crs=None, *args, **kwargs):
 	series = data if isinstance(data, gpd.GeoSeries) else data[data._geometry_column_name]
 
 	series = series.to_crs(3857)
-	buf = series.buffer(radius / series.centroid.to_crs(4326).y.pipe(np.radians).pipe(np.cos), *args, **kwargs).to_crs(old_crs)
+	buf = series.buffer(radius / series.centroid.to_crs(4326).y.pipe(np.radians).pipe(np.cos), **kwargs).to_crs(old_crs)
 
 	if isinstance(data, gpd.GeoSeries):
 		return gpd.GeoSeries(buf.unary_union, crs=old_crs) if dissolve else buf

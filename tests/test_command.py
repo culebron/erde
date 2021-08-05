@@ -2,8 +2,6 @@ from contextlib import contextmanager
 from erde import autocli, read_df
 from unittest import mock
 import geopandas as gpd
-import pytest
-import sys
 
 d = 'tests/io/data/'
 df = read_df(d + 'points.gpkg')
@@ -29,16 +27,14 @@ def test_cli_call():
 
 	# pretend we're decorating in __main__
 	m1 = mock.MagicMock()
-	m2 = mock.MagicMock(__name__='__main__')
-	m1.return_value = m2
+	m1.return_value.__name__='__main__'
 	with mock.patch('inspect.getmodule', m1), mock.patch('yaargh.dispatch', mock.MagicMock()):
 		clifunc3 = autocli(clifunc)
 		crashing_func2 = autocli(crashing_func)
 
-		m3 = mock.MagicMock()
-		setattr(m3, 'output-file', '/tmp/test-output-file.gpkg')
-		m4 = mock.Mock(return_value=m3)
-		with mock.patch('yaargh.ArghParser.parse_args', new=m4):
+		m4 = mock.MagicMock()
+		m4.return_value.__getitem__.return_value.__getitem__.return_value = '/tmp/test-output-file.gpkg'
+		with mock.patch('yaargh.ArghParser.parse_known_args', new=m4):
 			def run_with_patches(ipdb=0, pudb=0):
 				with mock.patch('erde.IPDB', ipdb), mock.patch('erde.PUDB', pudb), mock.patch('ipdb.slaunch_ipdb_on_exception', mock.MagicMock()) as mipdb, mock.patch('erde._handle_pudb', mock.MagicMock()) as mpudb:
 					clifunc3(df)
