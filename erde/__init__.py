@@ -8,6 +8,8 @@ import pandas as pd
 import time
 import yaargh
 
+from .cfg import CONFIG
+
 
 ENV_VARS = {'ELOG': 0, 'IPDB': 0, 'PUDB': 0, 'ECACHE': None, 'ESYNC': 0}
 ELOG, IPDB, PUDB, ECACHE, ESYNC = [os.environ.get(k, v) for k, v in ENV_VARS.items()]
@@ -255,12 +257,13 @@ import importlib
 
 raw_funcs = {i: importlib.import_module(f'erde.op.{i}').main for i in commands}
 
-__all__ = []
+__all__ = ['CONFIG']
 # creating import shortcuts for commands, e.g.: `erde.op.buffer.main` => `erde.buffer`
 # note for devs: this imports all modules in op, hence they should not import many other libraries in module root. A lazy import would work, but it'll hide funcs signatures.
 for k, v in raw_funcs.items():
 	globals()[k] = v
 	__all__.append(k)
+
 
 def entrypoint():
 	import yaargh
