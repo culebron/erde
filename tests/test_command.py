@@ -35,25 +35,28 @@ def test_cli_call():
 	m4 = mock.MagicMock()
 	m4.return_value.__getitem__.return_value.__getitem__.return_value = '/tmp/test-output-file.gpkg'
 	with mock.patch('inspect.getmodule', m1), mock.patch('yaargh.dispatch', mock.MagicMock()), mock.patch('yaargh.ArghParser.parse_known_args', new=m4):
-		clifunc3 = autocli(clifunc)
-		crashing_func2 = autocli(crashing_func)
+		clifunc_dec = autocli(clifunc)
+		crashing_dec = autocli(crashing_func)
+		streaming_dec = autocli(streaming_func)
 
 		# tests if debuggers were initialized (but no exception is raised here)
-		for ipdb, pudb in ((0, 0), (1, 0), (0, 1)):
-			with mock.patch('erde.IPDB', ipdb), mock.patch('erde.PUDB', pudb), mock.patch('ipdb.slaunch_ipdb_on_exception', mock.MagicMock()) as mipdb, mock.patch('erde._handle_pudb', mock.MagicMock()) as mpudb:
-				clifunc3(df)
+		# the function that accepts GeoDataFrame will not open path itself
+		# (yaargh decorator works only when dispatched)
+		# but read_stream annotation is opened in decorated function, hence string path
+		for func, data in ((clifunc_dec, df), (streaming_dec, 'tests/area/irrelevant-objects.csv')): # , streaming_dec:
+			for ipdb, pudb in ((0, 0), (1, 0), (0, 1)):
+				with mock.patch('erde.IPDB', ipdb), mock.patch('erde.PUDB', pudb), mock.patch('ipdb.slaunch_ipdb_on_exception', mock.MagicMock()) as mipdb, mock.patch('erde._handle_pudb', mock.MagicMock()) as mpudb:
+					func(data)
 
-			for param, obj in ((ipdb, mipdb), (pudb, mpudb)):
-				attr = 'assert_not_called' if param == 0 else 'assert_called_once'
-				getattr(obj, attr)()
-
-			return mipdb, mpudb
+				for param, obj in ((ipdb, mipdb), (pudb, mpudb)):
+					attr = 'assert_not_called' if param == 0 else 'assert_called_once'
+					getattr(obj, attr)()
 
 		# make sure debugger is called when an exception is raised
 		with mock.patch('erde.PUDB', 1), mock.patch('pudb.post_mortem', mock.MagicMock()) as pm_debug:
-			crashing_func2(df)
+			crashing_dec(df)
 
 		pm_debug.assert_called_once()
 
-	assert not hasattr(clifunc3, '_argh')
-	assert clifunc3 != clifunc
+	assert not hasattr(clifunc_dec, '_argh')
+	assert clifunc_dec != clifunc
