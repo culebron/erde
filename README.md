@@ -1,6 +1,6 @@
 # Erde: hiking GIS library
 
-Nomadic GIS toolset. This is a tool to make minimum-boilerplate GIS processing scripts. It also contains some commonly used tools.
+This is a toolset to make minimum-boilerplate GIS processing scripts. It also contains some commonly used tools.
 
 ## Features
 
