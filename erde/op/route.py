@@ -111,7 +111,6 @@ def route_row(waypoints, mode, overview='simplified', alternatives=1, annotation
 	try:
 		sleep(0) # yield to other threads
 		data = raw_route(route_line, mode, overview=overview, annotations=annotations, alternatives=alternatives, **params)
-		print(data)
 		sleep(0)
 
 		result = []
