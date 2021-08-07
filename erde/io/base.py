@@ -267,6 +267,9 @@ class BaseWriter:
 
 	# main process
 	def __call__(self, df):
+		if df is None:  # don't write empty values
+			return
+
 		if self.emergency_stop.value and not self._sync:
 			dprint('main __call__: emergency stop in background process')
 			t, v, tb = self.err_q.get()

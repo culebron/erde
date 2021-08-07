@@ -137,43 +137,84 @@ def autocli(func):
 		execution_start = time.time()
 
 		with debug_capture() as stack:
-			if num_streams != 0:  # streaming mode
-				if has_output_stream:
-					output_path = subparser.parse_known_args()[1][-1]
-					kwargs.pop('output-path', None)
-					writer = stack.enter_context(write_stream(output_path, sync=False))
-				reader = stack.enter_context(read_stream(args[id_stream], sync=False))
+			"""
+			all possible combos of input/output and function/generator (2*2*3 == 12):
+			input:  2: one call (with any # of df), stream
+			func:   2: normal func, generator
+			output: 3: nothing, df, stream
 
-				for df in reader:
-					args = list(args)
-					args[id_stream] = df
-					retval = func(*args, **kwargs)
-					if has_output_stream and retval is not None:
-						writer(retval)
+			1)  one    func nothing = ok
+			2)  one    func df      = ok
+			3)  one    func stream  = ok, (will write 1ce to stream)
+			4)  one    gen  nothing = FORBIDDEN
+			5)  one    gen  df      = FORBIDDEN
+			6)  one    gen  stream  = ok
 
-			else:  # simple mode, read entire df, run the function, write enitre output
+			7)  stream func nothing = ok
+			8)  stream func df      = FORBIDDEN
+			9)  stream func stream  = ok
+			10) stream gen  nothing = FORBIDDEN
+			11) stream gen  df      = FORBIDDEN
+			12) stream gen  stream  = ok
+
+			remaning combos still too different to fit into if/else tree.
+			we make 3 layers (reader, func and writer):
+				reader/single df => generator,
+				func/generator => generator,
+				writer => callable object or a (dummy) func
+
+			"""
+			if inspect.isgeneratorfunction(func) and not has_output_stream:
+				# case 4, 5, 10 & 11
+				raise TypeError('If function is a generator, it must have return type as `write_stream`: `def main(...) -> write_stream:`.')
+
+			if input_streams == 1 and has_output_df:
+				# case 8 & 11
+				raise TypeError('function decorated with @autocli has read_stream in input, but a single dataframe in output. Such combination is currently forbidden. Reduce capability will be added later with a separate decorator. You may change return annotation to `write_stream`.')
+
+			if has_output_stream or has_output_df:
+				output_path = subparser.parse_known_args()[1][-1]
 				kwargs.pop('output-path', None)  # output-path leaks into kwargs when it's added to parser, so pop it from there just in case
-				retval = func(*args, **kwargs)
-				if retval is None:
-					return
 
-				if has_output_df:
-					output_path = subparser.parse_known_args()[1][-1]
-					write_df(retval, output_path)
+			if input_streams == 1:
+				def reader():
+					with read_stream(args[id_stream], sync=False) as rd:
+						for df in rd:
+							args2 = list(args)
+							args2[id_stream] = df
+							yield args2
+			else:
+				def reader():
+					yield args
+
+			if has_output_stream:
+				# df -> stream, stream -> stream
+				writer = stack.enter_context(write_stream(output_path, sync=False))
+			elif has_output_df:
+				writer = lambda df: write_df(df, output_path)
+			else:
+				writer = lambda df: None
+
+			for args2 in reader():
+				retval = func(*args2, **kwargs)
+				retval = retval if inspect.isgeneratorfunction(func) else [retval]
+
+				for df in retval:
+					writer(func(*args, **kwargs))
 
 		print(f'Total execution time {str(timedelta(seconds=time.time() - execution_start))[:-5]}s')
 
 	frm = inspect.stack()[1]
 	mod = inspect.getmodule(frm[0])
 
-	num_streams = 0
+	input_streams = 0
 	id_stream = None
 
 	for i, (k, par) in enumerate(sig.parameters.items()):
 		an = par.annotation
 		if an is not inspect._empty:  # par.default is inspect._empty and   < removed.
 			if an == read_stream:  # streaming cli app
-				num_streams += 1  # must count number of read_stream, as only 1 is allowed
+				input_streams += 1  # must count number of read_stream, as only 1 is allowed
 				id_stream = i
 				continue
 
@@ -187,8 +228,8 @@ def autocli(func):
 			if an != bool:
 				decorated = yaargh.decorators.arg(*names, type=TYPE_OPENERS.get(an, an))(decorated)
 
-	if num_streams > 1:
-		raise TypeError(f'Argument of read_stream type can be only one, got {num_streams} instead')
+	if input_streams > 1:
+		raise TypeError(f'Argument of read_stream type can be only one, got {input_streams} instead')
 
 	if mod.__name__ == '__main__':
 		yaargh.set_default_command(subparser, decorated)
