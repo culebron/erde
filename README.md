@@ -41,11 +41,13 @@ from code/Jupyter:
 
 Usage: If you're unaware how to run a script, simply do this and you'll see the arguments/options:
 
-    $ python3 sample.py
+	$ python3 sample.py
+	usage: sample.py [-h] input_data sample_size output-path
+	sample.py: error: the following arguments are required: input_data, sample_size, output-path
 
-or
+or, to print more verbose help:
 
-    $ python3 sample.py -h
+	$ python3 sample.py -h
 
 Actual call:
 

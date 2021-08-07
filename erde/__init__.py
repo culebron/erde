@@ -127,10 +127,7 @@ def autocli(func):
 	sig = inspect.signature(func)
 	has_output_df = sig.return_annotation in (pd.DataFrame, gpd.GeoDataFrame)
 	has_output_stream = sig.return_annotation == write_stream
-
 	subparser = yaargh.ArghParser()
-	if has_output_stream or has_output_df:
-		subparser.add_argument('output-path')
 
 	@wraps(func)
 	def decorated(*args, **kwargs):
@@ -178,10 +175,10 @@ def autocli(func):
 
 			if input_streams == 1:
 				def reader():
-					with read_stream(args[id_stream], sync=False) as rd:
+					with read_stream(args[stream_arg_id], sync=False) as rd:
 						for df in rd:
 							args2 = list(args)
-							args2[id_stream] = df
+							args2[stream_arg_id] = df
 							yield args2
 			else:
 				def reader():
@@ -208,14 +205,14 @@ def autocli(func):
 	mod = inspect.getmodule(frm[0])
 
 	input_streams = 0
-	id_stream = None
+	stream_arg_id = None
 
 	for i, (k, par) in enumerate(sig.parameters.items()):
 		an = par.annotation
 		if an is not inspect._empty:  # par.default is inspect._empty and   < removed.
 			if an == read_stream:  # streaming cli app
 				input_streams += 1  # must count number of read_stream, as only 1 is allowed
-				id_stream = i
+				stream_arg_id = i
 				continue
 
 			# argument with default vaulue = optional, & it must start with dashes
@@ -231,8 +228,13 @@ def autocli(func):
 	if input_streams > 1:
 		raise TypeError(f'Argument of read_stream type can be only one, got {input_streams} instead')
 
+
 	if mod.__name__ == '__main__':
 		yaargh.set_default_command(subparser, decorated)
+		# output-path should be added here, to be the last argument
+		if has_output_stream or has_output_df:
+			subparser.add_argument('output-path')
+
 		yaargh.dispatch(subparser)
 		return decorated  # returning for test code to check the decorated function
 
