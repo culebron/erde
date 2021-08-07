@@ -11,8 +11,16 @@ import yaargh
 from .cfg import CONFIG
 
 
-ENV_VARS = {'ELOG': 0, 'IPDB': 0, 'PUDB': 0, 'ECACHE': None, 'ESYNC': 0}
-ELOG, IPDB, PUDB, ECACHE, ESYNC = [os.environ.get(k, v) for k, v in ENV_VARS.items()]
+ELOG = IPDB = PUDB = ECACHE = ESYNC = None
+DEFAULT_ENV_VARS = {'ELOG': 0, 'IPDB': 0, 'PUDB': 0, 'ECACHE': None, 'ESYNC': 0}
+
+for k, v in DEFAULT_ENV_VARS.items():
+	var = os.environ.get(k, v)
+	try:
+		var = int(var)
+	except:
+		pass
+	globals()[k] = v
 
 
 def dprint(*args, **kwargs):

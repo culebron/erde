@@ -1,5 +1,8 @@
 import geopandas as gpd
 from erde import CONFIG, dprint, utils, read_stream, write_stream, autocli
+import sys
+
+
 ANNOTATIONS = 'duration,distance'
 
 
@@ -61,6 +64,7 @@ def raw_route(route, mode, retries=10, **params):
 		'steps': 'false',
 		'geometries': 'polyline',
 		'annotations': 'false',
+		'generate_hints': 'false',
 		**params
 	}
 
@@ -70,12 +74,13 @@ def raw_route(route, mode, retries=10, **params):
 	return resp.json()
 
 
-def single_route(route_line, mode, overview='simplified', alternatives=1, annotations=ANNOTATIONS, **params):
-	"""Routes a single route line and transforms the path into LineString.
+def route_row(waypoints, mode, overview='simplified', alternatives=1, annotations=ANNOTATIONS, **params):
+	"""Routes a row from dataframe or a LineString and outputs the path as a list of dicts that can be turned into GeoDataFrame.
 
 	Parameters
 	----------
-	Route with waypoints, can have 2 or more vertice.
+	waypoints: LineString or pd.Series with 'geometry' key
+		Points through which to route. If it's Series, then 'geometry' is taken from it, and the rest is treated as extra columns and copied to result items.
 	mode : str
 		Name of router in Erde CONFIG['routers'] or URL to the router.
 	overview : str, {'simplified', 'full', 'no'}
@@ -91,68 +96,69 @@ def single_route(route_line, mode, overview='simplified', alternatives=1, annota
 
 	Returns
 	-------
-	dict
-		Dictionary with main response data: duration (sec), geometry (LineString), distance (m), nodes (list of nodes) if annotations contain 'nodes'.
+	list of dicts
+		Each list item is alternative route (by default there's 1), each dictionary contains the original extra items from waypoints, plus the main route data: duration (sec), geometry (LineString), distance (m), nodes (list of nodes) if annotations contain 'nodes'.
 
 	"""
-	from shapely.geometry.base import EmptyGeometry
 	from shapely.geometry import LineString
 	from time import sleep
 	import requests
+	import pandas as pd
+
+	metadata = waypoints.to_dict() if isinstance(waypoints, pd.Series) else {'geometry': waypoints}
+	route_line = metadata.pop('geometry')
+
 	try:
+		sleep(0) # yield to other threads
+		data = raw_route(route_line, mode, overview=overview, annotations=annotations, alternatives=alternatives, **params)
+		print(data)
 		sleep(0)
-		data = raw_route(route_line, mode, overview=overview, annotations=annotations, **params)
+
+		result = []
+		for alt, route in enumerate(data.get('routes', [])[:alternatives], start=1):
+
+			route_result = {
+				**metadata,
+				'alternative': alt,
+				'duration': route['duration'],
+				'distance': route['distance'],
+				'geometry': LineString(utils.decode_poly(route['geometry']))
+			}
+
+			if overview == 'full' and 'nodes' in annotations:
+				nds = []
+				for leg in route['legs']:
+					n = leg['annotation']['nodes']
+					# annotations always have start-end edges fully,
+					# even when waypoint projects on a node (a corner), the edge before or after is repeated in adjacent legs
+					nds.extend(n[2:] if n[:2] == nds[-2:] else n)
+				route_result['nodes'] = nds
+			result.append(route_result)
 		sleep(0)
-
-		if 'routes' not in data:
-			return {'duration': None, 'distance': None, 'geometry': EmptyGeometry(), 'nodes': []}
-
-		if len(data['routes']) > 0:
-			result = []
-			for route in data['routes'][:alternatives]:
-				route_result = {
-					'duration': route['duration'],
-					'distance': route['distance'],
-					'geometry': LineString(utils.decode_poly(route['geometry']))
-				}
-
-				if overview == 'full' and 'nodes' in annotations:
-					nds = []
-					for leg in route['legs']:
-						n = leg['annotation']['nodes']
-						if n[:2] == nds[-2:]:
-							nds.extend(n[2:])
-						elif n[:1] == nds[-1:]:
-							nds.extend(n[1:])
-						else:
-							nds.extend(n)
-					route_result['nodes'] = nds
-				result.append(route_result)
-
-			if alternatives == 1:
-				return result[0]
-
-			return result
+		return result
 	except (requests.exceptions.ConnectionError, requests.exceptions.ConnectTimeout, requests.models.complexjson.JSONDecodeError):
-		return {'duration': None, 'distance': None, 'geometry': EmptyGeometry(), 'nodes': []}  # empty row
+		# if with all multiple retries things don't work, something is wrong,
+		# no point to suppress the requests further
+		print('Can\'t connect or decode JSON. Multiple retries were made, if they didn\'t help, there\'s a problem with network, URLs or requests rate (OSRM may stop responding if requested too often)', file=sys.stderr)
+		raise
+		# how to mark it as not-connected?
 	except:
-		print(route_line)
+		print('Unhandled exception in the erde.op.route code with route:', route_line, file=sys.stderr)
 		raise
 
+
 @autocli
-def main(input_data: read_stream, mode, overview='full', annotations=ANNOTATIONS, threads:int=10) -> write_stream:
-	from concurrent.futures import ThreadPoolExecutor
+def main(input_data: read_stream, mode, overview='full', annotations=ANNOTATIONS, alternatives:int=1, threads:int=10) -> write_stream:
 	import functools
+	import itertools
 
-	fn = functools.partial(single_route, mode=mode, overview=overview, annotations=annotations)
+	fn = functools.partial(route_row, mode=mode, overview=overview, annotations=annotations, alternatives=alternatives)
+	rows = (r for i, r in input_data.iterrows())
 	if threads == 1:
-		result = map(fn, input_data['geometry'].values)
+		result = map(fn, rows)
 	else:
+		from concurrent.futures import ThreadPoolExecutor
 		with ThreadPoolExecutor(max_workers=threads) as tpe:
-			result = tpe.map(fn, input_data['geometry'].values)
+			result = tpe.map(fn, rows)
 
-	gdf = gpd.GeoDataFrame(result, index=input_data.index)
-	for k in gdf:
-		input_data[k] = gdf[k]
-
-	return input_data
+	return gpd.GeoDataFrame(itertools.chain(*result))
