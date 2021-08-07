@@ -1,6 +1,6 @@
 import geopandas as gpd
 from erde import CONFIG, dprint, utils, read_stream, write_stream, autocli
-ANNOTATIONS = 'duration'
+ANNOTATIONS = 'duration,distance'
 
 
 def get_retry(url, params, retries=10, timeout=None):
@@ -64,13 +64,13 @@ def raw_route(route, mode, retries=10, **params):
 		**params
 	}
 
-	coordinates = ';'.join('{0},{1}'.format(*c) for c in route.coords)
+	coordinates = ';'.join(f'{c[0]},{c[1]}' for c in route.coords)
 	url = f'{host}/route/v1/driving/{coordinates}'
 	resp = get_retry(url, params, retries)
 	return resp.json()
 
 
-def single_route(route_line, mode, overview='simplified', keep_nodes=False, alternatives=1, annotations=ANNOTATIONS, **params):
+def single_route(route_line, mode, overview='simplified', alternatives=1, annotations=ANNOTATIONS, **params):
 	"""Routes a single route line and transforms the path into LineString.
 
 	Parameters
@@ -80,17 +80,19 @@ def single_route(route_line, mode, overview='simplified', keep_nodes=False, alte
 		Name of router in Erde CONFIG['routers'] or URL to the router.
 	overview : str, {'simplified', 'full', 'no'}
 		How detailed the response route line is. By default the geometry is simplified, roughness is proportional to the length of route.
-	keep_nodes : bool
-		Save node ids to returning object if overview == 'full'.
 	retries : int, default 10
 		Number of attemtps to make request. The delay before Nth attempt is N sec.
+	alternatives : int, default 1
+		Number of alternative routes to return.
+	annotations : string, default 'duration'.
+		Additional metadata for each route coordinate. Possible values (may be multiple separated by comma): true, false, nodes, distance, duration, datasources, weight, speed.
 	**params : keyword arguments
 		Parameters to URL (e.g. 'exclude').
 
 	Returns
 	-------
 	dict
-		Dictionary with main response data: duration (sec), geometry (LineString), distance (m), nodes (list of nodes) if keep_nodes==True.
+		Dictionary with main response data: duration (sec), geometry (LineString), distance (m), nodes (list of nodes) if annotations contain 'nodes'.
 
 	"""
 	from shapely.geometry.base import EmptyGeometry
@@ -114,10 +116,16 @@ def single_route(route_line, mode, overview='simplified', keep_nodes=False, alte
 					'geometry': LineString(utils.decode_poly(route['geometry']))
 				}
 
-				if overview == 'full' and keep_nodes:
-					nds = route['legs'][0]['annotation']['nodes']
-					for leg in route['legs'][1:]:
-						nds += leg['annotation']['nodes'][1:]
+				if overview == 'full' and 'nodes' in annotations:
+					nds = []
+					for leg in route['legs']:
+						n = leg['annotation']['nodes']
+						if n[:2] == nds[-2:]:
+							nds.extend(n[2:])
+						elif n[:1] == nds[-1:]:
+							nds.extend(n[1:])
+						else:
+							nds.extend(n)
 					route_result['nodes'] = nds
 				result.append(route_result)
 
@@ -132,11 +140,11 @@ def single_route(route_line, mode, overview='simplified', keep_nodes=False, alte
 		raise
 
 @autocli
-def main(input_data: read_stream, mode, overview='full', annotations=ANNOTATIONS, keep_nodes:bool=False, threads:int=10) -> write_stream:
+def main(input_data: read_stream, mode, overview='full', annotations=ANNOTATIONS, threads:int=10) -> write_stream:
 	from concurrent.futures import ThreadPoolExecutor
 	import functools
 
-	fn = functools.partial(single_route, mode=mode, overview=overview, annotations=annotations, keep_nodes=keep_nodes)
+	fn = functools.partial(single_route, mode=mode, overview=overview, annotations=annotations)
 	if threads == 1:
 		result = map(fn, input_data['geometry'].values)
 	else:
