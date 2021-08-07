@@ -27,7 +27,7 @@ def get_retry(url, params, retries=10, timeout=None):
 		try:
 			resp = requests.get(url, params=params, timeout=timeout)
 			return resp
-		except (requests.exceptions.ConnectionError, requests.exceptions.ConnectTimeout, requests.models.complexjson.JSONDecodeError) as e:
+		except (requests.exceptions.ConnectionError, requests.exceptions.ConnectTimeout, requests.models.complexjson.JSONDecodeError):
 			dprint('could not connect', end='')
 			if try_num == retries - 1:
 				raise
