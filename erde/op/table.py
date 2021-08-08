@@ -1,3 +1,4 @@
+from concurrent.futures import ThreadPoolExecutor
 from erde import CONFIG, autocli, write_stream, utils
 from erde.op.route import get_retry
 from itertools import product
@@ -10,6 +11,7 @@ import urllib
 
 
 def _tolist(data, name='sources'):
+	"""Extracts list of Points from list/df with geometries/list, so that table_route could accept any kind of data."""
 	msg = 'dataframe contains geometries that are not points'
 	if isinstance(data, gpd.GeoSeries):
 		if any(data.geom_type != 'Point'):
@@ -25,14 +27,29 @@ def _tolist(data, name='sources'):
 
 
 def _index(data):
+	"""Function to produce index from any input to table_route, or create one on the fly."""
 	if isinstance(data, (pd.Series, pd.DataFrame)):
 		return data.index
 	else:
 		return pd.RangeIndex(len(data))
 
 
-#@threader.catch_traceback
-def route_chunk(data, host_url, result_type='duration', retries_limit=10, extra_params=None):
+def _route_chunk(data, host_url, annotations='duration', retries=10, extra_params=None):
+	"""Table-routes a piece of table, makes a DataFrame of results. For internal use.
+
+	Parameters
+	----------
+	data : tuple: (sources, destinations, sources_offset, destinations_offset)
+		A tuple of chunk data. Passed as tuple to simplify `map` calls.
+	host_url : string
+		E.g. 'http://localhost:5000'
+	annotations : string, {'duration', 'distance', 'duration,distance'}, default 'duration'.
+	retries : int, default 10
+		How many times to make requests to service on failure to connect.
+	extra_params : dict, optional
+		Additional params. See https://github.com/Project-OSRM/osrm-backend/blob/master/docs/http.md#table-service
+
+	"""
 	sources, destinations, sources_offset, destinations_offset = data
 	sources_count = len(sources)
 	destinations_count = len(destinations)
@@ -52,19 +69,19 @@ def route_chunk(data, host_url, result_type='duration', retries_limit=10, extra_
 		'sources': source_numbers,
 		'destinations': destination_numbers,
 		'generate_hints': 'false',
-		'annotations': result_type,
+		'annotations': annotations,
 		**extra_params
 	}
 
 	encoded_params = urllib.parse.quote_plus(urllib.parse.urlencode(params))
 	encoded_url = f'{host_url}/table/v1/driving/polyline({encoded})?{encoded_params}'
-	resp_data = get_retry(encoded_url).json()
+	resp_data = get_retry(encoded_url, {}, retries).json()
 
 	# if 'duration' is requested, then take resp_data['durations'], or resp_data['distances'] if distances.
 	# also, 'duration,distance' might be requested, then take both and concatenate results (= join columns)
 	results = []
 	
-	for key in result_type.split(','):
+	for key in annotations.split(','):
 		df = pd.DataFrame(resp_data[f'{key}s']).reset_index().rename(columns={'index': 'source'}).melt(id_vars='source', var_name='destination', value_name=key)
 		df[key] = df[key].astype(float)
 		if len(results) > 0:
@@ -89,14 +106,38 @@ def route_chunk(data, host_url, result_type='duration', retries_limit=10, extra_
 	return result_df
 
 
-def table_route(sources, destinations, mode, max_table_size=10000, threads=10, result_type='duration', pbar=True, cache_name=None, executor='process', extra_params=None):
+def table_route(sources, destinations, mode, max_table_size=2_000, threads=10, annotations='duration', pbar=True, cache_name=None, executor='process', extra_params=None):
+	"""Makes table routes between 2 sets of points (between all pairs of them), splitting requests more or less optimally to fit into max-table-size parameter.
+
+	OSRM may set an arbitrary limit on how many cells the table can have, and deny larger requests. With smaller `max_table_size`, table will be split into more smaller requests, and then the results will be concatenated. If possible, set it on the server to 100_000, this will work much faster.
+
+	If sources/destinations have indice, the resulting dataframe will have them too.
+
+	Parameters
+	----------
+	sources : list, gpd.GeoSeries or gpd.GeoDataFrame
+		Starting points.
+	destination : list, gpd.GeoSeries or gpd.GeoDataFrame
+		End points of trips.
+	mode : string
+		name of routing mode in the config, or URL
+	max_table_size : int, default 2_000
+		maximum number of sources*destinations in a single request.
+	threads : int, default 10
+		Number of threads
+
+	Yields
+	------
+	DataFrame
+		Data frame, where each row is pair of source & destination. Columns are duration, distance (if requested in `annotations`), source_snap and destination_snap (distances from requested coordinates and the nearest graph edge).
+	"""
 	sources_indices = {i: v for i, v in enumerate(_index(sources))}
 	destinations_indices = {i: v for i, v in enumerate(_index(destinations))}
 	sources = _tolist(sources, 'sources')
 	destinations = _tolist(destinations, 'destinations')
 
-	if result_type not in ('duration', 'distance', 'duration,distance'):
-		raise ValueError("result_type must be one of these: 'duration', 'distance', 'duration,distance'")
+	if annotations not in ('duration', 'distance', 'duration,distance'):
+		raise ValueError("annotations must be one of these: 'duration', 'distance', 'duration,distance'")
 
 	mts = max_table_size
 	host_url = CONFIG['routers'].get(mode, mode)
@@ -111,12 +152,12 @@ def table_route(sources, destinations, mode, max_table_size=10000, threads=10, r
 			cols = max(mts // rows, 1)
 			rows = min(mts, rows)
 
-	with tqdm(total=total_rows * total_cols, desc='Table routing', disable=(not pbar)) as t:
+	with tqdm(total=total_rows * total_cols, desc='Table routing', disable=(not pbar)) as t, ThreadPoolExecutor(max_workers=threads) as tpe:
 		combos = list(product(range(0, total_rows, rows), range(0, total_cols, cols)))
 		slices = [(sources[s:s + rows], destinations[d:d + cols], s, d) for s, d in combos]
 
 		# process/thread/an instance of executor
-		for df in map(route_chunk, slices, host_url=host_url, result_type=result_type, max_workers=threads, pbar=False, extra_params=extra_params):
+		for df in tpe.map(_route_chunk, slices, host_url=host_url, annotations=annotations, max_workers=threads, pbar=False, extra_params=extra_params):
 			df['source'] = df['source'].map(sources_indices)
 			df['destination'] = df['destination'].map(destinations_indices)
 			yield df
@@ -124,7 +165,29 @@ def table_route(sources, destinations, mode, max_table_size=10000, threads=10, r
 
 
 @autocli
-def main(sources: gpd.GeoDataFrame, destinations: gpd.GeoDataFrame, mode, output_path, threads: int = 10, mts: int = 10000, keep_columns=None) -> write_stream:
+def main(sources: gpd.GeoDataFrame, destinations: gpd.GeoDataFrame, mode, threads: int = 10, mts: int = 2000, keep_columns=None) -> write_stream:
+	"""Makes table route requests between sources and destinations. Outputs the result as a GDF with LineString between each pair.
+
+	Parameters
+	----------
+	sources : GeoDataFrame
+		Points of sources.
+	destinations : GeoDataFrame
+		Points of destinations.
+	mode : string
+		Name of router in Erde config, or URL (host + port).
+	threads : int, default 10
+		Number of threads to run and process requests.
+	mts : int, default 2000
+		Max table size, i.e. len(sources) * len(destinations). OSRM server handles only requests smaller than a particular amount (set in osrm-routed CLI options), and with this setting requests are split into many.
+	keep_columns : string
+		Comma-separated names of columns to take from sources & destinations GeoDataFrames and put into the result.
+
+	Yields
+	------
+	GeoDataFrame
+
+	"""
 	t = table_route(sources['geometry'], destinations['geometry'], mode, max_table_size=mts, threads=threads)
 
 	if keep_columns is not None:
