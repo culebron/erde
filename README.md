@@ -1,4 +1,4 @@
-# Erde: hiking GIS library
+# Erde: Hiking GIS Library
 
 This is a toolset to make minimum-boilerplate GIS processing scripts. It also contains some commonly used tools.
 
@@ -30,7 +30,9 @@ from code/Jupyter:
 **chunk processing:** process large datasets in chunks, but still as dataframes, with @autocli or own code
 **@autocli decorator** turns a function into a GIS-aware CLI app (without argparse pain)
 
-## Example: sample.py
+## Example
+
+[sample.py](examples/1_sample_py/sample.py)
 
 	from erde import autocli
 	from geopandas import GeoDataFrame as GDF
