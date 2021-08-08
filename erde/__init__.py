@@ -28,6 +28,9 @@ def dprint(*args, **kwargs):
 		print(*args, **kwargs)
 
 
+class ErdeDecoratorError(Exception):
+	pass
+
 @contextmanager
 def debug_capture():
 	with ExitStack() as stack:
@@ -161,14 +164,6 @@ def autocli(func):
 				writer => callable object or a (dummy) func
 
 			"""
-			if inspect.isgeneratorfunction(func) and not has_output_stream:
-				# case 4, 5, 10 & 11
-				raise TypeError('If function is a generator, it must have return type as `write_stream`: `def main(...) -> write_stream:`.')
-
-			if input_streams == 1 and has_output_df:
-				# case 8 & 11
-				raise TypeError('function decorated with @autocli has read_stream in input, but a single dataframe in output. Such combination is currently forbidden. Reduce capability will be added later with a separate decorator. You may change return annotation to `write_stream`.')
-
 			if has_output_stream or has_output_df:
 				output_path = subparser.parse_known_args()[1][-1]
 				kwargs.pop('output-path', None)  # output-path leaks into kwargs when it's added to parser, so pop it from there just in case
@@ -197,7 +192,7 @@ def autocli(func):
 				retval = retval if inspect.isgeneratorfunction(func) else [retval]
 
 				for df in retval:
-					writer(func(*args, **kwargs))
+					writer(df)
 
 		print(f'Total execution time {str(timedelta(seconds=time.time() - execution_start))[:-5]}s')
 
@@ -226,8 +221,15 @@ def autocli(func):
 				decorated = yaargh.decorators.arg(*names, type=TYPE_OPENERS.get(an, an))(decorated)
 
 	if input_streams > 1:
-		raise TypeError(f'Argument of read_stream type can be only one, got {input_streams} instead')
+		raise ErdeDecoratorError(f'Argument of read_stream type can be only one, got {input_streams} instead')
 
+	if inspect.isgeneratorfunction(func) and not has_output_stream:
+		# case 4, 5, 10 & 11
+		raise ErdeDecoratorError('If function is a generator, it must have return type as `write_stream`: `def main(...) -> write_stream:`.')
+
+	if input_streams == 1 and has_output_df:
+		# case 8 & 11
+		raise ErdeDecoratorError('function decorated with @autocli has read_stream in input, but a single dataframe in output. Such combination is currently forbidden. Reduce capability will be added later with a separate decorator. You may change return annotation to `write_stream`.')
 
 	if mod.__name__ == '__main__':
 		yaargh.set_default_command(subparser, decorated)
