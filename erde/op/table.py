@@ -1,12 +1,11 @@
 from erde import CONFIG, autocli, write_stream, utils
+from erde.op.route import get_retry
 from itertools import product
 from polyline import encode as encode_poly
-from time import sleep
 from tqdm import tqdm
 from yaargh import CommandError
 import geopandas as gpd
 import pandas as pd
-import requests
 import urllib
 
 
@@ -48,43 +47,18 @@ def route_chunk(data, host_url, result_type='duration', retries_limit=10, extra_
 		range(sources_count, sources_count + destinations_count)))
 
 
+	extra_params = extra_params or {}
 	params = {
 		'sources': source_numbers,
 		'destinations': destination_numbers,
 		'generate_hints': 'false',
-		'annotations': result_type
+		'annotations': result_type,
+		**extra_params
 	}
 
-	if extra_params:
-		params.update(extra_params)
-
 	encoded_params = urllib.parse.quote_plus(urllib.parse.urlencode(params))
-
-	table_url = f'{host_url}/table/v1/driving/polyline({encoded})'
-	encoded_url = f'{table_url}?{encoded_params}'
-	# writing the data into last_* objects, so the caller can analyze them if needed
-	for i in range(retries_limit):
-		sleep(i)
-
-		try:
-			response = requests.get(encoded_url)
-		except requests.exceptions.ConnectionError as er:
-			last_error = er
-			continue
-
-		if response.status_code != 200:
-			last_error = Exception(f"server response {response.status_code}")
-			continue
-
-		resp_data = response.json()
-		if resp_data['code'] != 'Ok':
-			last_error = Exception(f"response ok, json code not ok: {resp_data['code']}")
-			continue
-
-		break  # good response, stop the cycle and don't exec the 'else' clause below
-
-	else:  # ran out of retries limit.
-		raise last_error
+	encoded_url = f'{host_url}/table/v1/driving/polyline({encoded})?{encoded_params}'
+	resp_data = get_retry(encoded_url).json()
 
 	# if 'duration' is requested, then take resp_data['durations'], or resp_data['distances'] if distances.
 	# also, 'duration,distance' might be requested, then take both and concatenate results (= join columns)
@@ -115,7 +89,7 @@ def route_chunk(data, host_url, result_type='duration', retries_limit=10, extra_
 	return result_df
 
 
-def table_route(sources, destinations, mode, max_table_size=10000, threads=10, result_type='duration', progress_bar=True, cache_name=None, executor='process', extra_params=None):
+def table_route(sources, destinations, mode, max_table_size=10000, threads=10, result_type='duration', pbar=True, cache_name=None, executor='process', extra_params=None):
 	sources_indices = {i: v for i, v in enumerate(_index(sources))}
 	destinations_indices = {i: v for i, v in enumerate(_index(destinations))}
 	sources = _tolist(sources, 'sources')
@@ -137,7 +111,7 @@ def table_route(sources, destinations, mode, max_table_size=10000, threads=10, r
 			cols = max(mts // rows, 1)
 			rows = min(mts, rows)
 
-	with tqdm(total=total_rows * total_cols, desc='Table routing', disable=(not progress_bar)) as t:
+	with tqdm(total=total_rows * total_cols, desc='Table routing', disable=(not pbar)) as t:
 		combos = list(product(range(0, total_rows, rows), range(0, total_cols, cols)))
 		slices = [(sources[s:s + rows], destinations[d:d + cols], s, d) for s, d in combos]
 
@@ -168,4 +142,3 @@ def main(sources: gpd.GeoDataFrame, destinations: gpd.GeoDataFrame, mode, output
 			df = df.merge(sub_destinations, left_on='destination', right_index=True, suffixes=('', '_dest'))
 
 		yield gpd.GeoDataFrame(df, crs=4326)
-

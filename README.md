@@ -46,7 +46,7 @@ from code/Jupyter:
 
 ## Examples
 
-[Minimal CLI app](examples/2_minimal_cli_app/sample.py) shows how to create a new app.
+[This example](examples/2_minimal_cli_app/sample.py) shows how to create a minimal new app.
 
 	from erde import autocli
 	from geopandas import GeoDataFrame as GDF

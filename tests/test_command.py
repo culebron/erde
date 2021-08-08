@@ -61,7 +61,6 @@ def test_cli_call():
 			if k == 'crash': continue
 			for ipdb, pudb in ((0, 0), (1, 0), (0, 1)):
 				with mock.patch('erde.IPDB', ipdb), mock.patch('erde.PUDB', pudb), mock.patch('ipdb.slaunch_ipdb_on_exception', mock.MagicMock()) as mipdb, mock.patch('erde._handle_pudb', mock.MagicMock()) as mpudb:
-					print('calling to execute', k)
 					func(funcs_args[k])
 
 				for param, obj in ((ipdb, mipdb), (pudb, mpudb)):
@@ -88,6 +87,5 @@ def test_cli_call():
 			return input_data
 
 		for f in (bad1, bad2, bad3):
-			print(f.__name__)
 			with pytest.raises(ErdeDecoratorError):
 				autocli(f)
