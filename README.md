@@ -16,11 +16,11 @@ Erde also contains tools for repetitive tasks:
 
 * `erde route` takes a file with lines, treats them like waypoints, and outputs a file with original attributes, route geometries, and metadata: distance, duration, nodes.
 
-	erde route input.gpkg car route_geoms.gpkg
+		erde route input.gpkg car route_geoms.gpkg
 
 * `erde table` takes 2 datasets of N & M points and calculates all N\*M durations/distances between them.
 
-	erde table houses.csv shops.csv car distance-matrix.gpkg
+		erde table houses.csv shops.csv car distance-matrix.gpkg
 
 * `erde isochrone`  takes N points and m travel durations, and get N\*m isochrones in 1 line
 

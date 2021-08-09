@@ -270,6 +270,9 @@ class BaseWriter:
 		if df is None:  # don't write empty values
 			return
 
+		if not isinstance(df, (pd.DataFrame, gpd.GeoDataFrame)):
+			raise TypeError('df must be a (Geo)DataFrame')
+
 		if self.emergency_stop.value and not self._sync:
 			dprint('main __call__: emergency stop in background process')
 			t, v, tb = self.err_q.get()

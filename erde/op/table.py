@@ -12,18 +12,20 @@ import urllib
 
 def _tolist(data, name='sources'):
 	"""Extracts list of Points from list/df with geometries/list, so that table_route could accept any kind of data."""
-	msg = 'dataframe contains geometries that are not points'
+	msg = 'contains geometries that are not points'
+	if isinstance(data, (list, tuple)):
+		if any(i.geom_type != 'Point' for i in data):
+			raise ValueError(f'{name} contains geometries other than Point')
+		return list(data)
 	if isinstance(data, gpd.GeoSeries):
 		if any(data.geom_type != 'Point'):
 			raise ValueError(name + ' ' + msg)
-		data = data.tolist()
-	elif isinstance(data, gpd.GeoDataFrame):
+		return data.tolist()
+	if isinstance(data, gpd.GeoDataFrame):
 		if any(data.geom_type != 'Point'):
 			raise ValueError(name + ' ' + msg)
-		data = data['geometry'].tolist()
-	elif isinstance(data, pd.DataFrame):
-		raise ValueError(f'{name} should not be pd.DataFrame')
-	return data
+		return data['geometry'].tolist()
+	raise TypeError('type of points data was unrecognized')
 
 
 def _index(data):
