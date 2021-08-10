@@ -1,11 +1,21 @@
+from shapely.geometry import LineString, Point
 import geopandas as gpd
 import pandas as pd
-from shapely.geometry import LineString, Point
+
+
+def transform(obj, crs_from, crs_to):
+	"""Transforms obj (a shapely geometry) between CRS."""
+	from shapely.ops import transform as transform_
+	from functools import partial
+	import pyproj
+	return transform_(partial(pyproj.transform, crs_from, crs_to, always_xy=True), obj)
+
 
 def decode_poly(encoded_line):
 	"""Decodes Google polyline format and reverses lat/lon to lon/lat coords. Used for routing with OSRM."""
 	import polyline
 	return LineString([(i[1], i[0]) for i in polyline.decode(encoded_line)])
+
 
 def encode_poly(line):
 	"""Reverses coords to lon/lat and encodes into Google polyline format. Used for routing with OSRM."""
