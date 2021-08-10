@@ -1,8 +1,6 @@
 from contextlib import ExitStack, contextmanager
 from datetime import timedelta
-from functools import wraps
 import geopandas as gpd
-import inspect
 import os
 import pandas as pd
 import time
@@ -126,6 +124,9 @@ def autocli(func):
 		True
 
 	"""
+
+	from functools import wraps
+	import inspect
 
 	sig = inspect.signature(func)
 	has_output_df = sig.return_annotation in (pd.DataFrame, gpd.GeoDataFrame)

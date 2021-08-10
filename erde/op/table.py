@@ -1,6 +1,7 @@
 from concurrent.futures import ThreadPoolExecutor
 from erde import CONFIG, autocli, write_stream, utils
 from erde.op.route import get_retry
+from functools import partial
 from itertools import product
 from polyline import encode as encode_poly
 from tqdm import tqdm
@@ -52,6 +53,7 @@ def _route_chunk(data, host_url, annotations='duration', retries=10, extra_param
 		Additional params. See https://github.com/Project-OSRM/osrm-backend/blob/master/docs/http.md#table-service
 
 	"""
+	# offsets are used to make correct indice of the result dataframe
 	sources, destinations, sources_offset, destinations_offset = data
 	sources_count = len(sources)
 	destinations_count = len(destinations)
@@ -154,12 +156,14 @@ def table_route(sources, destinations, mode, max_table_size=2_000, threads=10, a
 			cols = max(mts // rows, 1)
 			rows = min(mts, rows)
 
+	_route_partial = partial(_route_chunk, host_url=host_url, annotations=annotations, extra_params=extra_params)
+
 	with tqdm(total=total_rows * total_cols, desc='Table routing', disable=(not pbar)) as t, ThreadPoolExecutor(max_workers=threads) as tpe:
 		combos = list(product(range(0, total_rows, rows), range(0, total_cols, cols)))
-		slices = [(sources[s:s + rows], destinations[d:d + cols], s, d) for s, d in combos]
+		slices = ((sources[s:s + rows], destinations[d:d + cols], s, d) for s, d in combos)
 
 		# process/thread/an instance of executor
-		for df in tpe.map(_route_chunk, slices, host_url=host_url, annotations=annotations, max_workers=threads, pbar=False, extra_params=extra_params):
+		for df in tpe.map(_route_partial, slices):
 			df['source'] = df['source'].map(sources_indices)
 			df['destination'] = df['destination'].map(destinations_indices)
 			yield df
@@ -167,7 +171,7 @@ def table_route(sources, destinations, mode, max_table_size=2_000, threads=10, a
 
 
 @autocli
-def main(sources: gpd.GeoDataFrame, destinations: gpd.GeoDataFrame, mode, threads: int = 10, mts: int = 2000, keep_columns=None) -> write_stream:
+def main(sources: gpd.GeoDataFrame, destinations: gpd.GeoDataFrame, mode, annotations='duration', threads: int = 10, mts: int = 2000, keep_columns=None) -> write_stream:
 	"""Makes table route requests between sources and destinations. Outputs the result as a GDF with LineString between each pair.
 
 	Parameters
@@ -190,7 +194,7 @@ def main(sources: gpd.GeoDataFrame, destinations: gpd.GeoDataFrame, mode, thread
 	GeoDataFrame
 
 	"""
-	t = table_route(sources['geometry'], destinations['geometry'], mode, max_table_size=mts, threads=threads)
+	t = table_route(sources['geometry'], destinations['geometry'], mode, annotations=annotations, max_table_size=mts, threads=threads)
 
 	if keep_columns is not None:
 		keep_columns = keep_columns.split(',')
@@ -201,7 +205,8 @@ def main(sources: gpd.GeoDataFrame, destinations: gpd.GeoDataFrame, mode, thread
 		sub_destinations = destinations[[k for k in keep_columns if k in destinations]]
 
 	for df in t:
-		df = utils.linestring_between(df.geometry, df.geometry_dest).drop('geometry_dest', axis=1)
+		df['geometry'] = utils.linestring_between(df.geometry, df.geometry_dest)
+		df.drop('geometry_dest', axis=1, inplace=True)
 		if keep_columns is not None:
 			df = df.merge(sub_sources, left_on='source', right_index=True, suffixes=('', '_source'))
 			df = df.merge(sub_destinations, left_on='destination', right_index=True, suffixes=('', '_dest'))

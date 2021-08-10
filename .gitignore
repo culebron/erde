@@ -10,3 +10,4 @@ htmlcov
 __version__.py
 .eggs
 .docs
+*.qmd
