@@ -24,7 +24,7 @@ def test_to_list():
 			table._tolist(arg)
 
 	# other types of data should raise TypeError
-	for arg in [dict(enumerate(points)), pd.Series(points), pd.DataFrame({'x': points})]:
+	for arg in [dict(enumerate(points)), pd.Series(points), pd.DataFrame({'x': points}), 1, 'string sample', None]:
 		with pytest.raises(TypeError):
 			table._tolist(arg)
 
@@ -44,3 +44,8 @@ def test_index():
 		assert isinstance(retval, pd.RangeIndex)
 		assert retval.tolist() == list(range(len(points)))
 
+
+# error: coordinate is invalid
+# error: 500 error
+
+# def test_
