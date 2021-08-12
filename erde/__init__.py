@@ -18,7 +18,7 @@ for k, v in DEFAULT_ENV_VARS.items():
 		var = int(var)
 	except:
 		pass
-	globals()[k] = v
+	globals()[k] = var
 
 
 def dprint(*args, **kwargs):
@@ -305,7 +305,7 @@ def write_stream(path, sync=True, *args, **kwargs):
 	return dr.write_stream(path, sync=sync, *args, **kwargs)
 
 
-commands = ['buffer', 'convert', 'area', 'length', 'route']
+commands = ['buffer', 'convert', 'area', 'length', 'route', 'table']
 
 import importlib
 

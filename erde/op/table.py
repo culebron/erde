@@ -78,8 +78,16 @@ def _route_chunk(data, host_url, annotations='duration', retries=10, extra_param
 	}
 
 	encoded_params = urllib.parse.quote_plus(urllib.parse.urlencode(params))
+	# if we pass url and params separately to requests.get, it will make a malformed URL
 	encoded_url = f'{host_url}/table/v1/driving/polyline({encoded})?{encoded_params}'
-	resp_data = get_retry(encoded_url, {}, retries).json()
+	resp = get_retry(encoded_url, {}, retries)
+
+	if resp.status_code != 200:
+		raise RuntimeError(f'OSRM server responded with {resp.status_code} code. Content: {resp.content}')
+
+	resp_data = resp.json()
+	if resp_data.get('code', 'Ok') != 'Ok':
+		raise RuntimeError(f'OSRM server responded with error message: {resp_data["message"]}')
 
 	# if 'duration' is requested, then take resp_data['durations'], or resp_data['distances'] if distances.
 	# also, 'duration,distance' might be requested, then take both and concatenate results (= join columns)
@@ -140,8 +148,9 @@ def table_route(sources, destinations, mode, max_table_size=2_000, threads=10, a
 	sources = _tolist(sources, 'sources')
 	destinations = _tolist(destinations, 'destinations')
 
-	if annotations not in ('duration', 'distance', 'duration,distance'):
-		raise ValueError("annotations must be one of these: 'duration', 'distance', 'duration,distance'")
+	ann_set = set(annotations.split(','))
+	if ann_set & {'duration', 'distance'} != ann_set:
+		raise ValueError("annotations must be one of these: 'duration', 'distance', or 'duration,distance' (order does not matter)")
 
 	mts = max_table_size
 	host_url = CONFIG['routers'].get(mode, mode)
