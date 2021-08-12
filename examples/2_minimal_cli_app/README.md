@@ -1,6 +1,6 @@
 # One-Line Script
 
-This is an example of minimal boilerplate.
+[sample.py](sample.py) script is an example of minimal boilerplate.
 
 	from erde import autocli
 	from geopandas import GeoDataFrame as GDF
