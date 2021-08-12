@@ -33,7 +33,7 @@ class CsvReader(BaseReader):
 
 		if self.geom_col:
 			properties.pop(self.geom_col)
-			self.schema['geometry'] = loads(df[self.geom_col][0]).geom_type
+			self.schema['geometry'] = loads(df.pop(self.geom_col)[0]).geom_type
 
 		with open(self.source) as f:
 			self.total_rows = sum(1 for i in f)
