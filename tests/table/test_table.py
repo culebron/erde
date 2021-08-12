@@ -179,9 +179,11 @@ def test_main():
 	with make_server():
 		result = pd.concat(table.main(h, s, 'local', threads=1, keep_columns='apartments,hid'))
 
+	# check if apartments were joined correctly
 	assert 'apartments' in result
-	assert result['hid'].map(h.set_index('hid')['apartments']).equals(result['apartments'])
+	assert result['source'].map(h['apartments']).equals(result['apartments'])
 
+	# calling with a non-existent column should raise CommandError
 	import yaargh
 	with make_server(), pytest.raises(yaargh.CommandError):
 		list(table.main(h, s, 'local', threads=1, keep_columns='apartments,hid,nonexistentcolumn'))
