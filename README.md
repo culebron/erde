@@ -60,6 +60,6 @@ from code/Jupyter:
 
 ### Code organization
 
-**chunk processing:** process large datasets in chunks, but still as dataframes, with @autocli or own code
-**@autocli decorator** turns a function into a GIS-aware CLI app (without argparse pain)
+* **chunk processing:** process large datasets in chunks, but still as dataframes, with @autocli or own code
+* **@autocli decorator** turns a function into a GIS-aware CLI app (without argparse pain)
 

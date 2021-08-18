@@ -166,7 +166,8 @@ def autocli(func):
 
 			"""
 			if has_output_stream or has_output_df:
-				output_path = subparser.parse_known_args()[1][-1]
+				known_args = subparser.parse_known_args()
+				output_path = getattr(known_args[0], 'output-path', None) or known_args[1][-1]
 				kwargs.pop('output-path', None)  # output-path leaks into kwargs when it's added to parser, so pop it from there just in case
 
 			if input_streams == 1:
@@ -305,7 +306,7 @@ def write_stream(path, sync=True, *args, **kwargs):
 	return dr.write_stream(path, sync=sync, *args, **kwargs)
 
 
-commands = ['buffer', 'convert', 'area', 'length', 'route', 'table']
+commands = ['buffer', 'convert', 'area', 'length', 'route', 'table', 'osm']
 
 import importlib
 
