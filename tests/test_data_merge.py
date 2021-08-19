@@ -48,7 +48,9 @@ def test_merge():
 def test_load_files():
 	import random
 	local_router = f'https://localhost:{random.randint(1000, 32767)}'
-	with mock.patch('yaml.load', return_value={'routers': {'local': local_router}}):
+	# we have to patch os.path.exists to make the tests work in environment where there are no cfg files on drive
+	# and also `open` must be patched (otherwise it crashes trying to open non-existent file)
+	with mock.patch('yaml.load', return_value={'routers': {'local': local_router}}), mock.patch('os.path.exists', return_value=True), mock.patch('erde.cfg.open', new=mock.MagicMock()):
 		from importlib import reload
 		from erde import cfg
 		reload(cfg)  # erde & cfg are imported when the test module is loaded, so they must be reloaded

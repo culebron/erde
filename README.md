@@ -54,7 +54,7 @@ from code/Jupyter:
 
 ### OSM Export and Conversion
 
-`erde osm` filters, crops by polygon and converts OSM files, and can merge several OSM files into one. It is a wrapper around [osmium-tool](https://osmcode.org/osmium-tool/manual.html) ([requires](https://packages.ubuntu.com/source/bionic/osmium-tool) Ubuntu 18.04LTS and newer) and [GDAL ogr2ogr tool](https://gdal.org/programs/ogr2ogr.html) (Ubuntu users need to install `gdal-bin`)
+`erde osm` filters, crops by polygon and converts OSM files, and can merge several OSM files into one. It is a wrapper around [osmium-tool](https://osmcode.org/osmium-tool/manual.html) (up-to-date Ubuntu packages are available for [18.04LTS and newer](https://packages.ubuntu.com/source/bionic/osmium-tool)) and [GDAL ogr2ogr tool](https://gdal.org/programs/ogr2ogr.html) (Ubuntu users need to install `gdal-bin`)
 
 Examples:
 
