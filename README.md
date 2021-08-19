@@ -58,11 +58,25 @@ from code/Jupyter:
 
 Examples:
 
-* Filter by tags: `erde osm my-country.osm.pbf wr/highway my-country-highways.osm.pbf`
-* Filter by tags and crop by polygon: `erde osm my-country.osm.pbf wr/highway my-city-highways.osm.pbf --crop my-city.geojson`
-* Convert to GeoPackage and extract only linestrings: `erde osm my-country.osm.pbf wr/highway city-hw.gpkg --crop my-city.geojson -l lines`
-* Merge several files: `erde osm country1.osm.pbf country2.osm.pbf wr/highway country1-country2-hw.osm.pbf`
-* Filter by tag, merge and convert only linestrings: `erde osm country1.osm.pbf country2.osm.pbf wr/highway country1-country2-hw.gpkg`
+* Filter by tags:
+
+		erde osm my-country.osm.pbf wr/highway my-country-highways.osm.pbf`
+
+* Filter by tags and crop by polygon:
+
+		erde osm my-country.osm.pbf wr/highway my-city-highways.osm.pbf --crop my-city.geojson`
+
+* Convert to GeoPackage and extract only linestrings:
+
+		erde osm my-country.osm.pbf wr/highway city-hw.gpkg --crop my-city.geojson -l lines`
+
+* Merge several files:
+
+		erde osm country1.osm.pbf country2.osm.pbf wr/highway country1-country2-hw.osm.pbf`
+
+* Filter by tag, merge and convert only linestrings:
+
+		erde osm country1.osm.pbf country2.osm.pbf wr/highway country1-country2-hw.gpkg`
 
 ### GIS-specific Tools
 
