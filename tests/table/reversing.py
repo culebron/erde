@@ -18,55 +18,57 @@ import pandas as pd
 import re
 import urllib.parse
 
-with open('request.txt') as f: req = f.read()
-with open('resp.json') as f: resp = json.load(f)
 
-sources = pd.DataFrame(resp['sources'])
-dest = pd.DataFrame(resp['destinations'])
+if __name__ == '__main__':
+	with open('request.txt') as f: req = f.read()
+	with open('resp.json') as f: resp = json.load(f)
 
-durations = pd.DataFrame(resp['durations'])
-distances = pd.DataFrame(resp['distances'])
+	sources = pd.DataFrame(resp['sources'])
+	dest = pd.DataFrame(resp['destinations'])
 
-houses = read_df('houses.csv')
-shops = read_df('shops.csv')
+	durations = pd.DataFrame(resp['durations'])
+	distances = pd.DataFrame(resp['distances'])
 
-# I ran requests and checked responses[0] to see what the structure of the reply was.
-responses = [None]
-def capture_osrm_output(*args, **kwargs):
-	r = get_retry(*args, **kwargs)
-	responses[0] = r.json()
-	return r
+	houses = read_df('houses.csv')
+	shops = read_df('shops.csv')
 
-with mock.patch('erde.op.table.get_retry', side_effect=capture_osrm_output) as mm:
-	# here i called with a sample of houses and shops to make the response fit into a screen or two.
-	result_table = list(table_route(houses[:10], shops[:2], 'local', annotations='duration,distance', max_table_size=100000))
+	# I ran requests and checked responses[0] to see what the structure of the reply was.
+	responses = [None]
+	def capture_osrm_output(*args, **kwargs):
+		r = get_retry(*args, **kwargs)
+		responses[0] = r.json()
+		return r
 
-url = list(mm.call_args)[0][0]
+	with mock.patch('erde.op.table.get_retry', side_effect=capture_osrm_output) as mm:
+		# here i called with a sample of houses and shops to make the response fit into a screen or two.
+		result_table = list(table_route(houses[:10], shops[:2], 'local', annotations='duration,distance', max_table_size=100000))
 
-def respond(url, params=None, retries=None):
-	match = re.match(r'^.*?polyline\((?P<polyline>.*?)\)\?(?P<qs>.*)$', url)
-	params = {k: v[0] for k, v in urllib.parse.parse_qs(urllib.parse.unquote(match['qs'])).items()}
+	url = list(mm.call_args)[0][0]
 
-	result = {}
-	for k in ('sources', 'destinations'):
-		params[k] = num = len(params[k].split(';'))
-		distance = np.random.rand(num)
-		# make coordinates span correctly: -180..180, -90..90
-		locations = np.round((np.random.rand(num, 2) - 0.5) * np.array([360, 180]), 6)
-		name = [None] * num
-		result[k] = pd.DataFrame({'distance': distance * 500, 'name': name, 'location': [list(i) for i in locations]}).to_dict(orient='records')
+	def respond(url, params=None, retries=None):
+		match = re.match(r'^.*?polyline\((?P<polyline>.*?)\)\?(?P<qs>.*)$', url)
+		params = {k: v[0] for k, v in urllib.parse.parse_qs(urllib.parse.unquote(match['qs'])).items()}
 
-	# make some distances/durations nan (make true/false matrix, use it in filter)
-	na = np.random.rand(params['sources'], params['destinations']) < .03
-	for k in ('distances', 'durations'):
-		d = np.where(na, np.nan, np.random.rand(params['sources'], params['destinations']))
-		result[k] = pd.DataFrame(d).values.tolist()
+		result = {}
+		for k in ('sources', 'destinations'):
+			params[k] = num = len(params[k].split(';'))
+			distance = np.random.rand(num)
+			# make coordinates span correctly: -180..180, -90..90
+			locations = np.round((np.random.rand(num, 2) - 0.5) * np.array([360, 180]), 6)
+			name = [None] * num
+			result[k] = pd.DataFrame({'distance': distance * 500, 'name': name, 'location': [list(i) for i in locations]}).to_dict(orient='records')
 
-	m = mock.Mock(status_code=200)
-	m.json.return_value = result
-	return m
+		# make some distances/durations nan (make true/false matrix, use it in filter)
+		na = np.random.rand(params['sources'], params['destinations']) < .03
+		for k in ('distances', 'durations'):
+			d = np.where(na, np.nan, np.random.rand(params['sources'], params['destinations']))
+			result[k] = pd.DataFrame(d).values.tolist()
 
-with mock.patch('erde.op.route.get_retry', side_effect=respond):
-	req_params = table_route(url)
+		m = mock.Mock(status_code=200)
+		m.json.return_value = result
+		return m
 
-print(req_params)
+	with mock.patch('erde.op.route.get_retry', side_effect=respond):
+		req_params = table_route(url)
+
+	print(req_params)
