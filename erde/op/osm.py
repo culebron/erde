@@ -41,7 +41,7 @@ def ogr_cmd(layers, columns, cmd_input, cmd_output):
 					tk, tv = t.split('=')
 					ogr_tags[tk] += ',' + tv
 				except (KeyError, ValueError):
-					raise CommandError(f'add-columns parameter usage:--columns key=value, or --columns value. Key should be one of these: {", ".join(DEFAULT_OGR_COLUMNS)}')
+					raise CommandError(f'add-columns parameter usage:--add-columns key=value, or --add-columns value. Key should be one of these: {", ".join(DEFAULT_OGR_COLUMNS)}')
 			else:
 				for k in ogr_tags.keys():
 					ogr_tags[k] += ',' + t
@@ -59,16 +59,37 @@ def ogr_cmd(layers, columns, cmd_input, cmd_output):
 
 
 def filter_cmd(tags, cmd_input, cmd_output):
+	"""Command to filter OSM files by tags.
+
+	>>> filter_cmd(['"wr/highway wr/railway"'], 'file1.osm', 'file2.osm.pbf')
+	'osmium tags-filter file1.osm "wr/highway wr/railway" -o file2.osm.pbf'
+	"""
 	import re
 	tags_filter = ' '.join(w for k in tags for w in re.split(r'\s+', k))
 	return f'osmium tags-filter {cmd_input} {tags_filter} -o {cmd_output}'
 
 
 def crop_cmd(crop, cmd_input, cmd_output):
+	"""Command to crop OSM file by area.
+
+	>>> crop_cmd('my_area.geojson', 'file1.osm', 'file2.osm.pbf')
+	'osmium extract file1.osm -o file2.osm.pbf -p "my_area.geojson"'
+	"""
 	return f'osmium extract {cmd_input} -o {cmd_output} -p "{crop}"'
 
 
 def cat_cmd(cmd_input, cmd_output):
+	"""Command to convert or concat files.
+
+	>>> cat_cmd('file1.osm', 'file2.osm.pbf')
+	'osmium cat file1.osm -o file2.osm.pbf'
+	>>> cat_cmd(['file1.osm', 'file2.osm.pbf'], 'file3.osm.gz')
+	'osmium cat file1.osm file2.osm.pbf -o file3.osm.gz'
+	"""
+	if not isinstance(cmd_input, str):
+		cmd_input = ' '.join(cmd_input)
+	if not isinstance(cmd_output, str):
+		cmd_output = ' '.join(cmd_output)
 	return f'osmium cat {cmd_input} -o {cmd_output}'
 
 
@@ -189,22 +210,18 @@ def main(*filenames, layers='points,lines,multipolygons', tags=None, keep_tmp_fi
 			last_out = output_paths
 			continue
 
-		j = 0
 		cleanup_prev = None
 		if dry:
-			cleanup = f'rm {output_paths[j]}'
-			command = cmd(last_out[j], output_paths[j])
-			if last_artifact:
-				cleanup_prev = f'rm {last_out[j]}'
+			final_commands.append(f'rm {output_paths[0]}')
+			final_commands.append(cmd(last_out, output_paths))
+			if last_artifact and not keep_tmp_files:
+				for lo in last_out:
+					final_commands.append = f'rm {lo}'
 		else:
-			cleanup = Remove(output_paths[j])
-			command = cmd(last_out[j], output_paths[j])
-			if last_artifact:
-				cleanup_prev = Remove(last_artifact[j])
-
-		final_commands.extend([cleanup, command])
-		if cleanup_prev and not keep_tmp_files:
-			final_commands.append(cleanup_prev)
+			final_commands.append(Remove(output_paths[0]))
+			final_commands.append(cmd(last_out, output_paths))
+			if last_artifact and not keep_tmp_files:
+				final_commands.extend([Remove(la) for la in last_artifact])
 
 		last_artifact = last_out = output_paths
 
@@ -219,3 +236,5 @@ def main(*filenames, layers='points,lines,multipolygons', tags=None, keep_tmp_fi
 			if res != 0:
 				print(f'error in command {c}')
 				sys.exit(1)
+
+	return final_commands
