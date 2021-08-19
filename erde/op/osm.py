@@ -85,6 +85,8 @@ def cat_cmd(cmd_input, cmd_output):
 	'osmium cat file1.osm -o file2.osm.pbf'
 	>>> cat_cmd(['file1.osm', 'file2.osm.pbf'], 'file3.osm.gz')
 	'osmium cat file1.osm file2.osm.pbf -o file3.osm.gz'
+	>>> cat_cmd(['file1.osm', 'file2.osm.pbf'], ['file3.osm.gz'])
+	'osmium cat file1.osm file2.osm.pbf -o file3.osm.gz'
 	"""
 	if not isinstance(cmd_input, str):
 		cmd_input = ' '.join(cmd_input)
@@ -94,10 +96,18 @@ def cat_cmd(cmd_input, cmd_output):
 
 
 class Remove:
+	"""Most commands are the same: osmium <args> or ogr2ogr <args>.
+	Removing files is OS-specific and should be in code, but still printable for dry run. This object is both runnable and printable.
+
+	>>> Remove('sample_path')
+	Remove('sample_path')
+	"""
 	def __init__(self, path):
 		self.path = path
 
 	def __call__(self):
+		# like os.system, it returns a status code
+		# 0 = ok, other = fail
 		import os
 		try:
 			if os.path.exists(self.path):
@@ -107,8 +117,8 @@ class Remove:
 		else:
 			return 0
 
-	def __str__(self):
-		return f'remove {self.path} file'
+	def __repr__(self):
+		return f"Remove('{self.path}')"
 
 
 @autocli
