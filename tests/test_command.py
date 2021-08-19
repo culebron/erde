@@ -47,9 +47,10 @@ def test_cli_call():
 	m1 = mock.MagicMock()
 	m1.return_value.__name__='__main__'
 
-	m4 = mock.MagicMock()
-	m4.return_value.__getitem__.return_value.__getitem__.return_value = '/tmp/test-output-file.gpkg'
-	with mock.patch('inspect.getmodule', m1), mock.patch('yaargh.dispatch', mock.MagicMock()), mock.patch('yaargh.ArghParser.parse_known_args', new=m4):
+	m2 = mock.MagicMock()
+	#m2.return_value.__getitem__.return_value.__getattr__.return_value = '/tmp/test-output-file.gpkg'
+	setattr(m2().__getitem__(), 'output-path', '/tmp/example.gpkg')
+	with mock.patch('inspect.getmodule', m1), mock.patch('yaargh.dispatch', mock.MagicMock()), mock.patch('yaargh.ArghParser.parse_known_args', new=m2):
 
 		dec_funcs = {k: erde.autocli(v) for k, v in funcs.items()}
 		path = 'tests/area/irrelevant-objects.csv'
