@@ -41,7 +41,7 @@ def ogr_cmd(layers, columns, cmd_input, cmd_output):
 					tk, tv = t.split('=')
 					ogr_tags[tk] += ',' + tv
 				except (KeyError, ValueError):
-					raise CommandError(f'add-columns parameter usage:--add-columns key=value, or --add-columns value. Key should be one of these: {", ".join(DEFAULT_OGR_COLUMNS)}')
+					raise CommandError(f'add-columns parameter usage:--columns key=value, or --columns value. Key should be one of these: {", ".join(DEFAULT_OGR_COLUMNS)}')
 			else:
 				for k in ogr_tags.keys():
 					ogr_tags[k] += ',' + t

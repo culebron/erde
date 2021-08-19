@@ -100,3 +100,10 @@ def test_lonlat2gdf():
 	with pytest.raises(ValueError):
 		utils.lonlat2gdf(h[['tst1', 'tst2']])
 
+
+def test_transform():
+	h2 = houses[:10]
+	from functools import partial
+	g3857 = h2.geometry.apply(partial(utils.transform, crs_from=4326, crs_to=3857))
+
+	assert all(h2.to_crs(3857).geometry.geom_almost_equals(g3857))
