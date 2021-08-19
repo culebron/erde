@@ -92,7 +92,7 @@ def test_lonlat2gdf():
 		h[x] = h.geometry.x
 		h[y] = h.geometry.y
 
-		res = utils.lonlat2gdf(h[[x, y]])
+		res = utils.lonlat2gdf(h[[x, y]].copy())  # copy to avoid SettingWithCopyWarning
 		assert h.geometry.equals(res.geometry)
 
 	h['tst1'] = h.geometry.x
@@ -105,5 +105,6 @@ def test_transform():
 	h2 = houses[:10]
 	from functools import partial
 	g3857 = h2.geometry.apply(partial(utils.transform, crs_from=4326, crs_to=3857))
+	g3857.crs = 3857  # to avoid CRS mismatch warning
 
 	assert all(h2.to_crs(3857).geometry.geom_almost_equals(g3857))

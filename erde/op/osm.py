@@ -171,36 +171,27 @@ def main(*filenames, layers='points,lines,multipolygons', tags=None, keep_tmp_fi
 	chain[-1][1] = [output_path]
 
 	final_commands = []
+	# fisrt process those commands that have more than 1 output (to process multiple input files)
 	for j, ip in enumerate(input_paths):
 		last_artifact = None
 		last_out = None
 		for i, (cmd, output_paths) in enumerate(chain):
-			if i == 0: # first item is [None, input_paths]
+			if i == 0: # first item in chain is [None, input_paths]
 				last_out = output_paths
 				continue
 
-			if len(output_paths) == 1:  # concat of multiple into one
+			# when we reach stages that concat into 1 file, break this cycle and don't add any commands.
+			# if we process just 1 file, this will always break the cycle
+			if len(output_paths) == 1:
 				break
 
-			cleanup_prev = None
-			if dry:
-				cleanup_next = f'rm {output_paths[j]}'
-				command = cmd(last_out[j], output_paths[j])
-				if last_artifact:
-					cleanup_prev = f'rm {last_artifact[j]}'
-			else:
-				cleanup_next = Remove(output_paths[j])
-				command = cmd(last_out[j], output_paths[j])
-				if last_artifact:
-					cleanup_prev = Remove(last_artifact[j])
-
-			# cleanup target file before writing to it
-			final_commands.extend([cleanup_next, command])
-			if cleanup_prev is not None and not keep_tmp_files:
-				final_commands.append(cleanup_prev)
+			final_commands += [Remove(output_paths[j]), cmd(last_out[j], output_paths[j])]
+			if last_artifact and not keep_tmp_files:
+				final_commands.append(Remove(last_artifact[j]))
 
 			last_artifact = last_out = output_paths
 
+	# now process
 	for i, (cmd, output_paths) in enumerate(chain):
 		if len(output_paths) > 1:
 			last_out = output_paths
@@ -210,18 +201,9 @@ def main(*filenames, layers='points,lines,multipolygons', tags=None, keep_tmp_fi
 			last_out = output_paths
 			continue
 
-		cleanup_prev = None
-		if dry:
-			final_commands.append(f'rm {output_paths[0]}')
-			final_commands.append(cmd(last_out, output_paths))
-			if last_artifact and not keep_tmp_files:
-				for lo in last_out:
-					final_commands.append = f'rm {lo}'
-		else:
-			final_commands.append(Remove(output_paths[0]))
-			final_commands.append(cmd(last_out, output_paths))
-			if last_artifact and not keep_tmp_files:
-				final_commands.extend([Remove(la) for la in last_artifact])
+		final_commands += [Remove(output_paths[0]), cmd(last_out, output_paths)]
+		if last_artifact and not keep_tmp_files:
+			final_commands += [Remove(la) for la in last_artifact]
 
 		last_artifact = last_out = output_paths
 
@@ -237,4 +219,4 @@ def main(*filenames, layers='points,lines,multipolygons', tags=None, keep_tmp_fi
 				print(f'error in command {c}')
 				sys.exit(1)
 
-	return final_commands
+	return final_commands  # return for testability
