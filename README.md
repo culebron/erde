@@ -12,7 +12,7 @@ Erde also contains tools for repetitive tasks:
 
 ## Features
 
-### Easy CLI scripts
+### Easy Command-Line Scripts
 
 This code creates an app that opens and saves files for you, converts types of parameters and makes help file. No more argparse hell!
 
@@ -23,7 +23,7 @@ This code creates an app that opens and saves files for you, converts types of p
 	def main(input_data: GDF, sample_size:float) -> GDF:
 		return input_data.sample(sample_size)
 
-call `python myscript.py` to see CLI arguments.
+call `python myscript.py` to see command line arguments.
 
 See [the example](examples/2_minimal_cli_app/) for more code and instructions.
 
@@ -52,7 +52,19 @@ from code/Jupyter:
 	from erde import isochrone
 	areas_df = isochrone(houses_df, 'foot', [5, 10, 15])
 
-### GIS-specific tools
+### OSM Export and Conversion
+
+`erde osm` filters, crops by polygon and converts OSM files, and can merge several OSM files into one.
+
+Examples:
+
+* Filter by tags: `erde osm my-country.osm.pbf wr/highway my-country-highways.osm.pbf`
+* Filter by tags and crop by polygon: `erde osm my-country.osm.pbf wr/highway my-city-highways.osm.pbf --crop my-city.geojson`
+* Convert to GeoPackage and extract only linestrings: `erde osm my-country.osm.pbf wr/highway city-hw.gpkg --crop my-city.geojson -l lines`
+* Merge several files: `erde osm country1.osm.pbf country2.osm.pbf wr/highway country1-country2-hw.osm.pbf`
+* Filter by tag, merge and convert only linestrings: `erde osm country1.osm.pbf country2.osm.pbf wr/highway country1-country2-hw.gpkg`
+
+### GIS-specific Tools
 
 * shortcuts for common usecases of sjoin: lookup, aggregate by geometry, and filter by geometry
 * area/length/buffer in metres, all cleanup done under the hood
@@ -61,5 +73,5 @@ from code/Jupyter:
 ### Code organization
 
 * **chunk processing:** process large datasets in chunks, but still as dataframes, with @autocli or own code
-* **@autocli decorator** turns a function into a GIS-aware CLI app (without argparse pain)
+* **@autocli decorator** turns a function into a GIS-aware command-line app (without argparse pain)
 
