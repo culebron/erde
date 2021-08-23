@@ -34,6 +34,7 @@ def _patch_os():
 
 def test_remove_command():
 	# this command should be tested separately and then patched for other tests, to reduce patching operations
+
 	c = osm.Remove('my_path')
 	assert str(c) == "Remove('my_path')"
 	with _patch_os() as (m1, m2):
@@ -52,3 +53,27 @@ def test_remove_command():
 	with _patch_os() as (m1, m2):
 		m2.side_effect = OSError('artificial exception')
 		assert c() == 1
+
+
+def test_main():
+	default_kwargs = {'layers': 'points,lines,multipolygons', 'tags': None, 'keep_tmp_files': False, 'columns': None, 'crop': None, 'dry': True}
+
+	tests = (
+		(
+			['file1.osm.pbf', 'file2.osm.gz'], {},
+			["Remove('file2.osm.gz')", 'osmium cat file1.osm.pbf -o file2.osm.gz']),
+		(
+			['file1.osm.pbf', 'file2.osm.pbf', 'file3.osm.pbf'], {},
+			["Remove('file3.osm.pbf')", 'osmium cat file1.osm.pbf file2.osm.pbf -o file3.osm.pbf']),
+		(
+			['file1.osm.pbf', 'file2.gpkg'], {}, ["Remove('file2.gpkg')", 'ogr2ogr --config OSM_USE_CUSTOM_INDEXING NO -gt 65535 -f gpkg file2.gpkg file1.osm.pbf points lines multipolygons ']),
+		(
+			['file1.osm.pbf', 'file2.osm.pbf', 'file3.gpkg'], {}, ["Remove('/tmp/_concat.osm.pbf')", 'osmium cat file1.osm.pbf file2.osm.pbf -o /tmp/_concat.osm.pbf', "Remove('file3.gpkg')", 'ogr2ogr --config OSM_USE_CUSTOM_INDEXING NO -gt 65535 -f gpkg file3.gpkg /tmp/_concat.osm.pbf points lines multipolygons ', "Remove('/tmp/_concat.osm.pbf')"]),
+			(['file1.osm.pbf', 'file2.osm.bz2'], {'tags': ['wr/highway']}, ["Remove('file2.osm.bz2')", 'osmium tags-filter file1.osm.pbf wr/highway -o file2.osm.bz2']),
+	)
+
+	with _patch_os():
+		for args, kwargs, exp_result in tests:
+			kwargs = {**default_kwargs, **kwargs}
+			result = [str(c).strip() for c in (osm.main(*args, **kwargs))]
+			assert result == [i.strip() for i in exp_result]

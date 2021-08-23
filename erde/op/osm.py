@@ -4,7 +4,8 @@ from erde import autocli, dprint
 from yaargh.decorators import arg
 from yaargh.exceptions import CommandError
 
-OSM_FILE = r'.*\.osm(\.(pbf|gz|bz2))$' # osm formats supported by libosmium: osm, osm.pbf, osm.gz, osm.bz2
+STEM = r'(?P<path>.*/)?(?P<stem>[^/\.]+)\.(?P<extention>[^\./]|osm(|\.pbf|\.gz|\.bz2|\.zip))$'
+OSM_FILE = r'.*\.osm(\.(pbf|gz|bz2)|)$' # osm formats supported by libosmium: osm, osm.pbf, osm.gz, osm.bz2
 DEFAULT_OGR_COLUMNS = {
 	'points': 'name,highway,ref,address,is_in,place,man_made',
 	'lines': 'name,highway,waterway,aerialway,barrier,man_made',
@@ -14,18 +15,19 @@ DEFAULT_OGR_COLUMNS = {
 }
 
 
-def ogr_cmd(layers, columns, cmd_input, cmd_output):
+def ogr_cmd(layers, columns, last_output, expected_output):
 	from erde import io
 	for k, drv in io.drivers.items():
-		if drv.can_open(cmd_output):
+		if drv.can_open(expected_output):
 			output_format = k
 			break
 	else:
-		raise CommandError(f'unknown format {cmd_output}')
+		raise CommandError(f'unknown format {expected_output}')
 
 	ogr_layers = ' '.join(layers.split(','))
 
 	extra_config = ''
+	artifacts = []
 	if columns is not None:
 
 		for k in DEFAULT_OGR_COLUMNS:
@@ -39,14 +41,15 @@ def ogr_cmd(layers, columns, cmd_input, cmd_output):
 			if '=' in t:
 				try:
 					tk, tv = t.split('=')
-					ogr_tags[tk] += ',' + tv
+					ogr_tags[tk] = tv
 				except (KeyError, ValueError):
-					raise CommandError(f'add-columns parameter usage:--add-columns key=value, or --add-columns value. Key should be one of these: {", ".join(DEFAULT_OGR_COLUMNS)}')
+					raise CommandError(f'columns parameter usage:--columns <geom_type>=col1,col2, or --columns col1,col2. geom_type should be one of these: {", ".join(DEFAULT_OGR_COLUMNS)}')
 			else:
 				for k in ogr_tags.keys():
-					ogr_tags[k] += ',' + t
+					ogr_tags[k] = t
 
 		ogr_cfg_file = '/tmp/_3_osmcfg.ini'
+
 		with open(ogr_cfg_file, 'w') as f:
 			f.write('closed_ways_are_polygons=aeroway,amenity,boundary,building,building:part,craft,geological,historic,landuse,leisure,military,natural,office,place,shop,sport,tourism,highway=platform,public_transport=platform\n'
 				'attribute_name_laundering=yes\n')
@@ -54,31 +57,23 @@ def ogr_cmd(layers, columns, cmd_input, cmd_output):
 				f.write(f'\n[{k}]\nosm_id=yes\nattributes={v}\n')
 
 		extra_config = f'--config OSM_CONFIG_FILE {ogr_cfg_file}'
+		artifacts = [ogr_cfg_file]
 
-	return f'ogr2ogr --config OSM_USE_CUSTOM_INDEXING NO -gt 65535 -f {output_format} {cmd_output} {cmd_input} {ogr_layers} {extra_config}'
-
-
-def filter_cmd(tags, cmd_input, cmd_output):
-	"""Command to filter OSM files by tags.
-
-	>>> filter_cmd(['"wr/highway wr/railway"'], 'file1.osm', 'file2.osm.pbf')
-	'osmium tags-filter file1.osm "wr/highway wr/railway" -o file2.osm.pbf'
-	"""
-	import re
-	tags_filter = ' '.join(w for k in tags for w in re.split(r'\s+', k))
-	return f'osmium tags-filter {cmd_input} {tags_filter} -o {cmd_output}'
+	return f'ogr2ogr --config OSM_USE_CUSTOM_INDEXING NO -gt 65535 -f {output_format} {expected_output} {last_output} {ogr_layers} {extra_config}', artifacts
 
 
-def crop_cmd(crop, cmd_input, cmd_output):
+def tags_cmd(tags, last_output, expected_output):
+	return f'osmium tags-filter {last_output} ' + ' '.join(tags) + f' -o {expected_output}', None
+
+def crop_cmd(crop, last_output, expected_output):
 	"""Command to crop OSM file by area.
 
 	>>> crop_cmd('my_area.geojson', 'file1.osm', 'file2.osm.pbf')
 	'osmium extract file1.osm -o file2.osm.pbf -p "my_area.geojson"'
 	"""
-	return f'osmium extract {cmd_input} -o {cmd_output} -p "{crop}"'
+	return f'osmium extract {last_output} -o {expected_output} -p "{crop}"', None
 
-
-def cat_cmd(cmd_input, cmd_output):
+def cat_cmd(last_output, expected_output):
 	"""Command to convert or concat files.
 
 	>>> cat_cmd('file1.osm', 'file2.osm.pbf')
@@ -88,11 +83,7 @@ def cat_cmd(cmd_input, cmd_output):
 	>>> cat_cmd(['file1.osm', 'file2.osm.pbf'], ['file3.osm.gz'])
 	'osmium cat file1.osm file2.osm.pbf -o file3.osm.gz'
 	"""
-	if not isinstance(cmd_input, str):
-		cmd_input = ' '.join(cmd_input)
-	if not isinstance(cmd_output, str):
-		cmd_output = ' '.join(cmd_output)
-	return f'osmium cat {cmd_input} -o {cmd_output}'
+	return f'osmium cat {last_output} -o {expected_output}', None
 
 
 class Remove:
@@ -149,8 +140,8 @@ def main(*filenames, layers='points,lines,multipolygons', tags=None, keep_tmp_fi
 	import os
 	import re
 	import sys
-	from pathlib import Path
 	from functools import partial
+	from collections import defaultdict
 
 	fns = len(filenames)
 	if fns < 2:
@@ -163,70 +154,73 @@ def main(*filenames, layers='points,lines,multipolygons', tags=None, keep_tmp_fi
 		if not os.path.exists(input_path):
 			raise CommandError(f'file {input_path} does not exist')
 
-	# partial(ogr_cmd, layers, columns), f'/tmp/_{stem}.gpkg'
-	chain = [(None, input_paths)]
-	stems = [Path(p).stem for p in input_paths]
+	output_is_osm = re.match(OSM_FILE, output_path)
+	many_inputs = len(input_paths) > 1
 
-	if bool(crop):
-		chain.append([partial(crop_cmd, crop), [f'/tmp/_{s}_cropped.osm.pbf' for s in stems]])
-	if tags is not None:
-		chain.append([partial(filter_cmd, tags), [f'/tmp/_{s}_filtered.osm.pbf' for s in stems]])
+	stage_props = (
+		(tags is not None,
+			tags_cmd, (tags,), 'many', 'filtered.osm.pbf'),
+		(crop is not None,
+			crop_cmd, (crop,), 'many', 'cropped.osm.pbf'),
+		(many_inputs or (tags is None and crop is None and output_is_osm),
+			cat_cmd, (), 'many-one', 'osm.pbf'),
+		(not output_is_osm,
+			ogr_cmd, (layers, columns), 'one-one', 'gpkg'),
+	)
 
-	if len(input_paths) > 1:
-		chain.append([cat_cmd, ['/tmp/_concat.osm.pbf']])
+	stages = [data for cond, *data in stage_props if cond]
+	max_file = len(input_paths) - 1
+	max_stage = len(stages) - 1
 
-	if not re.match(OSM_FILE, output_path):
-		chain.append([partial(ogr_cmd, layers, columns), [output_path]])
+	cleanup = defaultdict(list)
+	output = defaultdict(list)
+	output[-1] = input_paths
+	commands = []
+	last_output = None
 
-	chain[-1][1] = [output_path]
+	# cycle through files, because we should walk through
+	for i, last_output in enumerate(input_paths):
+		last_file = (i == max_file)
+		m = re.match(STEM, last_output)
+		stem = m['stem']
 
-	final_commands = []
-	# fisrt process those commands that have more than 1 output (to process multiple input files)
-	for j, ip in enumerate(input_paths):
-		last_artifact = None
-		last_out = None
-		for i, (cmd, output_paths) in enumerate(chain):
-			if i == 0: # first item in chain is [None, input_paths]
-				last_out = output_paths
-				continue
+		for j, (func, args, number, suffix) in enumerate(stages):
+			last_stage = j == max_stage
 
-			# when we reach stages that concat into 1 file, break this cycle and don't add any commands.
-			# if we process just 1 file, this will always break the cycle
-			if len(output_paths) == 1:
-				break
+			if number != 'many' and not last_file:
+				break  # only on the last file should we go into cat and ogr stages
 
-			final_commands += [Remove(output_paths[j]), cmd(last_out[j], output_paths[j])]
-			if last_artifact and not keep_tmp_files:
-				final_commands.append(Remove(last_artifact[j]))
+			if last_stage:
+				expected_output = output_path
+			elif func == cat_cmd:
+				expected_output = f'/tmp/_{j}_cat.{suffix}'
+			else:
+				expected_output = f'/tmp/_{j}_{stem}.{suffix}'
 
-			last_artifact = last_out = output_paths
+			if number != 'many':
+				last_output = ' '.join(output.pop(j - 1))
+			cmd, artifacts = partial(func, *args)(last_output, expected_output)
+			output[j].append(expected_output)
+			last_output = expected_output
 
-	# now process
-	for i, (cmd, output_paths) in enumerate(chain):
-		if len(output_paths) > 1:
-			last_out = output_paths
-			continue
+			commands += [cmd] + [Remove(a) for a in cleanup[j - 1]]
+			cleanup[j - 1] = []
+			if artifacts is not None: cleanup[j] += artifacts
+			if not last_stage:
+				cleanup[j].append(expected_output)
 
-		if cmd is None:
-			last_out = output_paths
-			continue
-
-		final_commands += [Remove(output_paths[0]), cmd(last_out, output_paths)]
-		if last_artifact and not keep_tmp_files:
-			final_commands += [Remove(la) for la in last_artifact]
-
-		last_artifact = last_out = output_paths
+	commands.extend([Remove(la) for la in cleanup[j]])
 
 	if dry:
 		print('Dry run of erde osm. Generated commands:')
-		for i, c in enumerate(final_commands):
+		for i, c in enumerate(commands):
 			print(f'{i}: {c}')
 	else:
-		for c in final_commands:
+		for c in commands:
 			dprint(c)
 			res = c() if callable(c) else os.system(c)
 			if res != 0:
 				print(f'error in command {c}')
 				sys.exit(1)
 
-	return final_commands  # return for testability
+	return commands  # return for testability
