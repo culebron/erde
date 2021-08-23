@@ -5,13 +5,14 @@ from unittest import mock
 from erde.op import osm
 
 def test_commands():
-	assert osm.ogr_cmd('points,multipolygons', None, 'file1.osm', 'file2.gpkg').strip() == 'ogr2ogr --config OSM_USE_CUSTOM_INDEXING NO -gt 65535 -f gpkg file2.gpkg file1.osm points multipolygons'
-
-	# ogr_cmd adds config file if there are columns requested
-	assert osm.ogr_cmd('points,multipolygons', ['a', 'b'], 'file1.osm', 'file2.gpkg').strip() == 'ogr2ogr --config OSM_USE_CUSTOM_INDEXING NO -gt 65535 -f gpkg file2.gpkg file1.osm points multipolygons --config OSM_CONFIG_FILE /tmp/_3_osmcfg.ini'
-
-	# for points we request column highway, and 'b' for all
-	assert osm.ogr_cmd('points,multipolygons', ['points=highway', 'b'], 'file1.osm', 'file2.gpkg').strip() == 'ogr2ogr --config OSM_USE_CUSTOM_INDEXING NO -gt 65535 -f gpkg file2.gpkg file1.osm points multipolygons --config OSM_CONFIG_FILE /tmp/_3_osmcfg.ini'
+	for params, exp_result in (
+		(('points,multipolygons', None, 'file1.osm', 'file2.gpkg'), 'ogr2ogr --config OSM_USE_CUSTOM_INDEXING NO -gt 65535 -f gpkg file2.gpkg file1.osm points multipolygons'),
+		# ogr_cmd adds config file if there are columns requested
+		(('points,multipolygons', ['a', 'b'], 'file1.osm', 'file2.gpkg'), 'ogr2ogr --config OSM_USE_CUSTOM_INDEXING NO -gt 65535 -f gpkg file2.gpkg file1.osm points multipolygons --config OSM_CONFIG_FILE /tmp/_3_osmcfg.ini'),
+		# for points we request column highway, and 'b' for all
+		(('points,multipolygons', ['points=highway', 'b'], 'file1.osm', 'file2.gpkg'), 'ogr2ogr --config OSM_USE_CUSTOM_INDEXING NO -gt 65535 -f gpkg file2.gpkg file1.osm points multipolygons --config OSM_CONFIG_FILE /tmp/_3_osmcfg.ini'),
+		):
+		assert osm.ogr_cmd(*params)[0].strip() == exp_result
 
 	# this is incorrect way to ask for columns: instead of highway= it should be points/lines/multipolygons=...
 	with pytest.raises(yaargh.CommandError):
@@ -68,7 +69,7 @@ def test_main():
 		(
 			['file1.osm.pbf', 'file2.gpkg'], {}, ["Remove('file2.gpkg')", 'ogr2ogr --config OSM_USE_CUSTOM_INDEXING NO -gt 65535 -f gpkg file2.gpkg file1.osm.pbf points lines multipolygons ']),
 		(
-			['file1.osm.pbf', 'file2.osm.pbf', 'file3.gpkg'], {}, ["Remove('/tmp/_concat.osm.pbf')", 'osmium cat file1.osm.pbf file2.osm.pbf -o /tmp/_concat.osm.pbf', "Remove('file3.gpkg')", 'ogr2ogr --config OSM_USE_CUSTOM_INDEXING NO -gt 65535 -f gpkg file3.gpkg /tmp/_concat.osm.pbf points lines multipolygons ', "Remove('/tmp/_concat.osm.pbf')"]),
+			['file1.osm.pbf', 'file2.osm.pbf', 'file3.gpkg'], {}, ["Remove('/tmp/_0_cat.osm.pbf')", 'osmium cat file1.osm.pbf file2.osm.pbf -o /tmp/_0_cat.osm.pbf', "Remove('file3.gpkg')", 'ogr2ogr --config OSM_USE_CUSTOM_INDEXING NO -gt 65535 -f gpkg file3.gpkg /tmp/_0_cat.osm.pbf points lines multipolygons ', "Remove('/tmp/_0_cat.osm.pbf')"]),
 			(['file1.osm.pbf', 'file2.osm.bz2'], {'tags': ['wr/highway']}, ["Remove('file2.osm.bz2')", 'osmium tags-filter file1.osm.pbf wr/highway -o file2.osm.bz2']),
 	)
 
