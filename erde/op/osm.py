@@ -68,7 +68,7 @@ def crop_cmd(crop, last_output, expected_output):
 	"""Command to crop OSM file by area.
 
 	>>> crop_cmd('my_area.geojson', 'file1.osm', 'file2.osm.pbf')
-	'osmium extract file1.osm -o file2.osm.pbf -p "my_area.geojson"', None
+	('osmium extract file1.osm -o file2.osm.pbf -p "my_area.geojson"', None)
 	"""
 	return f'osmium extract {last_output} -o {expected_output} -p "{crop}"', None
 
@@ -76,11 +76,11 @@ def cat_cmd(last_output, expected_output):
 	"""Command to convert or concat files.
 
 	>>> cat_cmd('file1.osm', 'file2.osm.pbf')
-	'osmium cat file1.osm -o file2.osm.pbf', None
-	>>> cat_cmd(['file1.osm', 'file2.osm.pbf'], 'file3.osm.gz')
-	'osmium cat file1.osm file2.osm.pbf -o file3.osm.gz', None
-	>>> cat_cmd(['file1.osm', 'file2.osm.pbf'], ['file3.osm.gz'])
-	'osmium cat file1.osm file2.osm.pbf -o file3.osm.gz', None
+	('osmium cat file1.osm -o file2.osm.pbf', None)
+	>>> cat_cmd('file1.osm file2.osm.pbf', 'file3.osm.gz')
+	('osmium cat file1.osm file2.osm.pbf -o file3.osm.gz', None)
+	>>> cat_cmd('file1.osm file2.osm.pbf', 'file3.osm.gz')
+	('osmium cat file1.osm file2.osm.pbf -o file3.osm.gz', None)
 	"""
 	return f'osmium cat {last_output} -o {expected_output}', None
 
