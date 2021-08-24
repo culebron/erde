@@ -148,7 +148,7 @@ def main(*filenames, layers='points,lines,multipolygons', tags=None, keep_tmp_fi
 
 	*input_paths, output_path = filenames
 	for i, input_path in enumerate(input_paths):
-		if not (input_path.endswith('.osm') or input_path.endswith('.osm.pbf')):
+		if not re.match(OSM_FILE, input_path):
 			raise CommandError(f'can\'t recognize format of {input_path}')
 		if not os.path.exists(input_path):
 			raise CommandError(f'file {input_path} does not exist')
@@ -220,7 +220,7 @@ def main(*filenames, layers='points,lines,multipolygons', tags=None, keep_tmp_fi
 			dprint(c)
 			res = c() if callable(c) else os.system(c)
 			if res != 0:
-				print(f'error in command {c}')
+				print(f'error in command {c}', file=sys.stderr)
 				sys.exit(1)
 
 	return commands  # return for testability

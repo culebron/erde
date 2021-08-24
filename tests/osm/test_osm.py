@@ -1,8 +1,9 @@
 from contextlib import contextmanager
-import yaargh
-import pytest
-from unittest import mock
 from erde.op import osm
+from unittest import mock
+import pytest
+import yaargh
+
 
 def test_commands():
 	for params, exp_result in (
@@ -29,8 +30,8 @@ def test_commands():
 
 @contextmanager
 def _patch_os():
-	with mock.patch('os.path.exists', return_value=True) as m1, mock.patch('os.remove', return_value=None) as m2:
-		yield m1, m2
+	with mock.patch('os.path.exists', return_value=True) as m1, mock.patch('os.remove', return_value=None) as m2, mock.patch('os.system', return_value=0) as m3:
+		yield m1, m2, m3
 
 
 def test_remove_command():
@@ -38,22 +39,38 @@ def test_remove_command():
 
 	c = osm.Remove('my_path')
 	assert str(c) == "Remove('my_path')"
-	with _patch_os() as (m1, m2):
+	with _patch_os() as (m1, m2, m3):
 		assert c() == 0
 
 	m1.assert_called_once()
 	m2.assert_called_once()
 
-	with _patch_os() as (m1, m2):
+	with _patch_os() as (m1, m2, m3):
 		m1.return_value = False
 		assert c() == 0
 
 	m1.assert_called_once()
 	m2.assert_not_called()
 
-	with _patch_os() as (m1, m2):
+	with _patch_os() as (m1, m2, m3):
 		m2.side_effect = OSError('artificial exception')
 		assert c() == 1
+
+
+def test_errors():
+	for fnames in [['file1.osm.pbf'], ['bad-input.txt', 'good-output.osm.pbf'], ['non-existent.osm.pbf', 'non-existent.osm.bpf']]:
+		with pytest.raises(yaargh.CommandError):
+			osm.main(*fnames)
+
+	# error handling when executing a command
+	with _patch_os() as (exists, remove, system):
+		system.return_value = 1
+		with mock.patch('sys.exit') as exit:
+			osm.main('file1.osm.pbf', 'file2.osm.gz')
+
+	# sys exit must have been called once with status = 1
+	exit.assert_called_once()
+	exit.assert_called_with(1)
 
 
 def test_main():
@@ -71,10 +88,22 @@ def test_main():
 		(
 			['file1.osm.pbf', 'file2.osm.pbf', 'file3.gpkg'], {}, ["Remove('/tmp/_0_cat.osm.pbf')", 'osmium cat file1.osm.pbf file2.osm.pbf -o /tmp/_0_cat.osm.pbf', "Remove('file3.gpkg')", 'ogr2ogr --config OSM_USE_CUSTOM_INDEXING NO -gt 65535 -f gpkg file3.gpkg /tmp/_0_cat.osm.pbf points lines multipolygons ', "Remove('/tmp/_0_cat.osm.pbf')"]),
 			(['file1.osm.pbf', 'file2.osm.bz2'], {'tags': ['wr/highway']}, ["Remove('file2.osm.bz2')", 'osmium tags-filter file1.osm.pbf wr/highway -o file2.osm.bz2']),
+			(['file1.osm.pbf', 'file2.osm.bz2'], {'tags': ['wr/highway'], 'crop': 'some-file.geojson'}, ["Remove('/tmp/_0_file1.filtered.osm.pbf')", 'osmium tags-filter file1.osm.pbf wr/highway -o /tmp/_0_file1.filtered.osm.pbf', "Remove('file2.osm.bz2')", 'osmium extract /tmp/_0_file1.filtered.osm.pbf -o file2.osm.bz2 -p "some-file.geojson"', "Remove('/tmp/_0_file1.filtered.osm.pbf')"]
+),
 	)
 
-	with _patch_os():
-		for args, kwargs, exp_result in tests:
-			kwargs = {**default_kwargs, **kwargs}
-			result = [str(c).strip() for c in (osm.main(*args, **kwargs))]
+	for args, kwargs, exp_result in tests:
+		for d in (True, False):
+			kwargs = {**default_kwargs, **kwargs, 'dry': d}
+			with _patch_os() as (exists, remove, system):
+				result = [str(c).strip() for c in osm.main(*args, **kwargs)]
+
 			assert result == [i.strip() for i in exp_result]
+
+			# test if remove was not called in dry run
+			if d:
+				remove.assert_not_called()
+			else:
+				# and was called exact amount of times in not-dry run
+				removes = sum(1 for cmd in exp_result if cmd.startswith('Remove'))
+				assert remove.call_count == removes
