@@ -4,7 +4,6 @@ geopandas
 ipdb
 polyline
 pygeos
-pymongo
 pyproj
 requests
 sqlalchemy
