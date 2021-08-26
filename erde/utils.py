@@ -5,10 +5,10 @@ import pandas as pd
 
 def transform(obj, crs_from, crs_to):
 	"""Transforms obj (a shapely geometry) between CRS."""
+	from pyproj import Transformer
 	from shapely.ops import transform as transform_
-	from functools import partial
-	import pyproj
-	return transform_(partial(pyproj.transform, crs_from, crs_to, always_xy=True), obj)
+	transformer = Transformer.from_crs(crs_from, crs_to, always_xy=True)
+	return transform_(transformer.transform, obj)
 
 
 def decode_poly(encoded_line):
@@ -50,10 +50,21 @@ def linestring_between(points1, points2):
 	return [LineString(i) for i in zip(points1, points2)]
 
 
-def coslat(geoseries):
-	"""Calculates latittude cosine coefficient for geoseries. The geoseries argument may be any geometry type that has a centroid."""
+def coslat(geom):
+	"""Calculates latittude cosine coefficient for geoseries or a single geometry. If geometry type is not point, centroid is taken.
+
+	If geom is a single geometry, we assume its CRS is 4326."""
 	import numpy as np
-	return geoseries.to_crs(3857).centroid.to_crs(4326).y.pipe(np.radians).pipe(np.cos)
+	from shapely.geometry.base import BaseGeometry
+	if not isinstance(geom, (gpd.GeoSeries, BaseGeometry)):
+		raise TypeError(f'geom must be GeoSeries or BaseGeometry, got {geom.__class__} instead.')
+
+	if isinstance(geom, BaseGeometry):
+		v = transform(transform(geom, 4326, 3857).centroid, 3857, 4326)
+	else:
+		v = geom.to_crs(3857).centroid.to_crs(4326)
+
+	return np.cos(np.radians(v.y))
 
 
 def crossjoin(df1, df2, **kwargs):
