@@ -1,4 +1,5 @@
 from contextlib import ExitStack, contextmanager
+import collections
 from datetime import timedelta
 import geopandas as gpd
 import os
@@ -281,6 +282,14 @@ def autocli(func):
 	input_streams = 0
 	stream_arg_id = None
 
+	# some arguments have names starting with the same letter.
+	# argh handles this only in automatic mode, but not with .arg decorator
+	# we count letters occurrences and then will not make a short variant for those where it's repeated >1 time
+	letters = collections.defaultdict(int)
+	for i, (k, par) in enumerate(sig.parameters.items()):
+		if par.default is not inspect._empty:
+			letters[par.name[0]] += 1
+
 	for i, (k, par) in enumerate(sig.parameters.items()):
 		an = par.annotation
 		if an is not inspect._empty:  # par.default is inspect._empty and   < removed.
@@ -293,6 +302,9 @@ def autocli(func):
 			# otherwise its considered positional (required), and that contradiction causes an exception
 			if par.default is not inspect._empty:
 				names = ['-' + par.name[0], '--' + par.name]
+				# if another param starts with this letter, remove the short version
+				if letters[par.name[0]] >= 2:
+					names = names[1:]
 			else:
 				names = [par.name]
 
@@ -325,7 +337,7 @@ def autocli(func):
 	return func
 
 
-commands = ['buffer', 'convert', 'area', 'length', 'route', 'table', 'osm']
+commands = ['buffer', 'convert', 'area', 'length', 'route', 'table', 'osm', 'isochrone']
 
 import importlib
 
@@ -345,6 +357,7 @@ def entrypoint():
 	spa = p.add_subparsers()
 	for k, v in raw_funcs.items():
 		p1 = spa.add_parser(k)
+		#import ipdb; ipdb.set_trace()
 		p1.set_default_command(yaargh.decorators.named(k)(v._argh))
 		# we must patch the arguments here for output-path, in the subparser of the command, before it's dispatched
 		# otherwise, output-path won't be in positional args

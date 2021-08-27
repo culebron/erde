@@ -1,7 +1,7 @@
 from erde import utils, CONFIG, dprint, autocli, write_df, write_stream
 from erde.op.table import table_route
 from matplotlib.tri import LinearTriInterpolator, Triangulation
-from shapely.geometry import Point, MultiPolygon
+from shapely.geometry import Point, Polygon, MultiPolygon
 import geopandas as gpd
 import matplotlib.pyplot as plt
 import numpy as np
@@ -219,6 +219,7 @@ class IsochroneRouter:
 			return
 
 		result = raster2polygons(*self.raster, [i * 60 for i in self.levels], POLY_DURATION_COL)
+		result['geometry'] = result.geometry.apply(lambda g: MultiPolygon([g]) if isinstance(g, Polygon) else g)
 		result.crs = 3857
 		return result.to_crs(4326)
 
@@ -226,6 +227,8 @@ class IsochroneRouter:
 @autocli
 def main(sources: gpd.GeoDataFrame, router, durations, speed:float, grid_density:float = 1.0, max_snap: float = MAX_SNAP, mts: int = MAX_TABLE_SIZE, pbar:bool=False) -> write_stream:
 	"""Builds isochrones from sources points within durations (iterable of numeric, minutes). Routes will start from the sources to a grid of points. To calculate the span and density of the grid, `speed` is required. Speed is upper limit of mean speed in km/h (see a list below). Isochrones are returned as a dataframe with same fields as in sources df, plus duration column and geometry as MultiPolygons (each isochrone may have detached islands).
+
+	All parameters (router, durations, speed, grid_density, max_snap, mts) can be names of columns of `sources` dataframe. Thus you can make isochrones of different limits/properties/transport modes in one file/run.
 
 	Parameters
 	----------
@@ -276,4 +279,21 @@ def main(sources: gpd.GeoDataFrame, router, durations, speed:float, grid_density
 	# NOTE for developers/users: the number of parameters was minimized as possible, but this is necessary as these parameters often change between servers.
 
 	# It would make sense to make `speed` unnecessary and stored in config, but no idea how to make it required if router is URL.
-	pass
+
+	duration_col = durations in sources
+	if durations not in sources:
+		durations = tuple(float(i) for i in durations.split(','))
+
+	from tqdm.auto import tqdm
+	for i, r in tqdm(sources.iterrows(), desc='Isochrones', total=len(sources), disable=not pbar):
+		ir = IsochroneRouter(
+			r.geometry,
+			# all parameters can be names of columns
+			r.get(router, router),
+			r[durations] if duration_col else durations,
+			r.get(speed, speed))
+
+		ir.grid_density = r.get(grid_density, grid_density)
+		ir.max_snap = r.get(max_snap, max_snap)
+		ir.mts = r.get(mts, mts)
+		yield ir.polygons
