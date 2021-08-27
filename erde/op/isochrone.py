@@ -91,21 +91,17 @@ class IsochroneRouter:
 		self._routed = None
 
 		self._nan_value = 36000
-		self._grid_size = None
+		self._raster_size = None
 
 	@property
 	def radius(self):
 		return self.speed / KMH2MPS * max(self.levels) * 60
 
 	@property
-	def grid_size(self):
+	def raster_size(self):
 		"""Size of raster grid."""
 		from math import log
 		return int(round(self.radius / max(log(self.radius * 2, 2), 1)))
-
-	@property
-	def time_limit(self):
-		return max(self.levels)
 
 	def get_grid_step(self):
 		if self._grid_step is None:
@@ -202,10 +198,10 @@ class IsochroneRouter:
 		z = gdf[FULL_DURATION]
 
 		# Grid of pixels to make raster and then interpolate values from it
-		xi = np.linspace(minx, maxx, self.grid_size)
-		yi = np.linspace(maxy, miny, self.grid_size)
+		xi = np.linspace(minx, maxx, self.raster_size)
+		yi = np.linspace(maxy, miny, self.raster_size)
 		# make all combinations of Xi and Yi (400*400), then unwrap it in one line (in 2 rows (x, y) by 160k)
-		ci = np.reshape(np.meshgrid(xi, yi), (2, self.grid_size * self.grid_size))
+		ci = np.reshape(np.meshgrid(xi, yi), (2, self.raster_size * self.raster_size))
 
 		# triangulator that takes points and gives the values in between
 		triang = Triangulation(x, y)
@@ -213,7 +209,7 @@ class IsochroneRouter:
 		interp = LinearTriInterpolator(triang, z)
 		# interpolate values, then re-wrap it into 400 by 400 for contourf (it requires a grid like pixels)
 
-		zi = np.reshape(interp(*ci), (self.grid_size, self.grid_size))
+		zi = np.reshape(interp(*ci), (self.raster_size, self.raster_size))
 		zi = np.where(np.isnan(zi), self._nan_value, zi)
 		return xi, yi, zi
 

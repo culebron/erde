@@ -113,3 +113,22 @@ def test_set_routed():
 		assert ir._routed is not None
 		assert len(ir.routed) == len(new_routed)
 		patched_table.assert_not_called()
+
+
+def test_set_grid_step():
+	ir = get_ir()
+	ir2 = get_ir()
+	ir2.speed *= 2
+	assert ir2.grid_step == ir.grid_step * 2
+
+	ir2.grid_step *= 2
+	assert ir2.grid_step == ir.grid_step * 4
+
+def test_small_grid():
+	# in code, if the IsochroneRouter.grid is too small, some functions return None. Not sure if it's the right way to do it, but we'll test this behaviour.
+	ir = get_ir()
+	ir.grid = ir.grid[:3]
+	with mock.patch('erde.op.isochrone.table_route', side_effect=RuntimeError) as patched_route:
+		assert ir.raster is None
+		assert ir.polygons is None
+		patched_route.assert_not_called()
