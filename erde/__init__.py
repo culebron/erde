@@ -22,15 +22,19 @@ for k, v in DEFAULT_ENV_VARS.items():
 
 
 def dprint(*args, **kwargs):
+	"""Stub for appropriate logging."""
 	if ELOG == '1':
 		print(*args, **kwargs)
 
 
 class ErdeDecoratorError(Exception):
+	"""A separate class to distinguish misconfiguration discovered when decorating functions."""
 	pass
+
 
 @contextmanager
 def debug_capture():
+	"""Handles all exceptions with IPDB or PUDB debuggers."""
 	with ExitStack() as stack:
 		# enter debuggers stack if an env vars is set
 		if IPDB == 1:
@@ -75,20 +79,92 @@ def write_df(df, path, *args, **kwargs):
 	dr.write_df(df, path, pm, *args, **kwargs)
 
 
-# when you put these types in annotation, @autocli decorator will use these functions instead of the class instatiations
-TYPE_OPENERS = {
-	pd.DataFrame: read_df,
-	gpd.GeoDataFrame: read_df
-}
+def read_geom(path, *args, **kwargs):
+	"""Reads first geometry from a file (whichever format openable by read_df, including CSV with WKT).
+
+	First geometry is read to prevent heavy unary_union operation."""
+	return read_df(path, *args, **kwargs).geometry.values[0]
+
+
+def write_geom(geometry, path, crs=None, *args, **kwargs):
+	"""Writes a single geometry to a file, a shorthand to skip creating a GeoDataFrame."""
+	write_df(gpd.GeoDataFrame({'geometry': [geometry]}, crs=crs), path, *args, **kwargs)
+
+
+def read_stream(path, geometry_filter=None, chunk_size=10_000, pbar=False, sync=True, *args, **kwargs):
+	"""Creates a reader object to read files/databases in chunks as dataframes.
+
+	Parameters
+	----------
+	path : str
+		path to a file or a table in a database. The format is detected automatically from the path (see `erde.io` for supported drivers).
+	geometry_filter : optional, shapely.geometry or path to file (will be opened with read_df at once), or GeoSeries, or GeoDataFrame.
+		Geometries to filter the opened source objects.
+	chunk_size : int, default 10_000
+		Maximum number of rows in each dataset.
+	pbar : bool, default False
+		Show progress bar.
+	sync : bool, default True
+		Don't create a new process, read the file in the main process.
+
+	`args` and `kwargs` are passed to drivers, see modules in erde.io.
+
+	To run a reader in a parallel process, use it as a context manager:
+
+		with read_stream(path) as reader:
+			for df in reader: ...
+
+	This can be overridden by `sync=True` option:
+
+		with read_stream(path, sync=True) as reader:
+			for df in reader: ...
+
+	If reader is iterated directly, it will work in the same process:
+
+		for df in read_stream(path): ...
+	"""
+	from .io import select_driver
+	dr, pm = select_driver(path)
+	return dr.read_stream(path, geometry_filter, chunk_size, pbar, sync, *args, **kwargs)
+
+
+def write_stream(path, sync=True, *args, **kwargs):
+	"""Creates a writer object (context manager) to write multiple dataframes into one file. Must be used as context manager.
+
+	Parameters
+	----------
+	path : str, filename or path to database table
+	sync : bool, default True
+		Set to `False` to run the writer in the background process.
+	args, kwargs : parameters passed to writer driver (see erde.io modules)
+
+	Example:
+
+		with write_stream('/tmp/my_file.gpkg') as write:
+			for df in data_generator():
+				write(df)
+	"""
+	from .io import select_driver
+	dr, pm = select_driver(path)
+	return dr.write_stream(path, sync=sync, *args, **kwargs)
+
 
 @contextmanager
 def _handle_pudb():
-	# pudb exception handler, put here to make patching possible for tests.
+	"""A context manager to capture errors with PUDB, which does not have such feature."""
+	# it's put in module global to make it patcheable for tests.
 	import pudb
 	try:
 		yield
 	except Exception:
 		pudb.post_mortem()
+
+
+# when you put these types in annotation, @autocli decorator will use these functions instead of the class instatiations
+TYPE_OPENERS = {
+	pd.DataFrame: read_df,
+	gpd.GeoDataFrame: read_df
+}
 
 
 def autocli(func):
@@ -196,7 +272,8 @@ def autocli(func):
 				for df in retval:
 					writer(df)
 
-		print(f'Total execution time {str(timedelta(seconds=time.time() - execution_start))[:-5]}s')
+		import sys
+		print(f'Total execution time {str(timedelta(seconds=time.time() - execution_start))[:-5]}s', file=sys.stderr)
 
 	frm = inspect.stack()[1]
 	mod = inspect.getmodule(frm[0])
@@ -246,64 +323,6 @@ def autocli(func):
 	func._argh = decorated
 	func._has_output = has_output_stream or has_output_df
 	return func
-
-
-def read_stream(path, geometry_filter=None, chunk_size=10_000, pbar=False, sync=True, *args, **kwargs):
-	"""Creates a reader object to read files/databases in chunks as dataframes.
-
-	Parameters
-	----------
-	path : str
-		path to a file or a table in a database. The format is detected automatically from the path (see `erde.io` for supported drivers).
-	geometry_filter : optional, shapely.geometry or path to file (will be opened with read_df at once), or GeoSeries, or GeoDataFrame.
-		Geometries to filter the opened source objects.
-	chunk_size : int, default 10_000
-		Maximum number of rows in each dataset.
-	pbar : bool, default False
-		Show progress bar.
-	sync : bool, default True
-		Don't create a new process, read the file in the main process.
-
-	`args` and `kwargs` are passed to drivers, see modules in erde.io.
-
-	To run a reader in a parallel process, use it as a context manager:
-
-		with read_stream(path) as reader:
-			for df in reader: ...
-
-	This can be overridden by `sync=True` option:
-
-		with read_stream(path, sync=True) as reader:
-			for df in reader: ...
-
-	If reader is iterated directly, it will work in the same process:
-
-		for df in read_stream(path): ...
-	"""
-	from .io import select_driver
-	dr, pm = select_driver(path)
-	return dr.read_stream(path, geometry_filter, chunk_size, pbar, sync, *args, **kwargs)
-
-
-def write_stream(path, sync=True, *args, **kwargs):
-	"""Creates a writer object (context manager) to write multiple dataframes into one file. Must be used as context manager.
-
-	Parameters
-	----------
-	path : str, filename or path to database table
-	sync : bool, default True
-		Set to `False` to run the writer in the background process.
-	args, kwargs : parameters passed to writer driver (see erde.io modules)
-
-	Example:
-
-		with write_stream('/tmp/my_file.gpkg') as write:
-			for df in data_generator():
-				write(df)
-	"""
-	from .io import select_driver
-	dr, pm = select_driver(path)
-	return dr.write_stream(path, sync=sync, *args, **kwargs)
 
 
 commands = ['buffer', 'convert', 'area', 'length', 'route', 'table', 'osm']
