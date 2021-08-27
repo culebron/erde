@@ -3,7 +3,7 @@ from erde.op import isochrone as ic
 from shapely.geometry import box, Point
 from unittest import mock
 import geopandas as gpd
-
+import pandas as pd
 
 t = 'tests/isochrone/'
 sources = read_df(t + 'sources.csv')
@@ -38,9 +38,10 @@ def test_polygons():
 
 	import pickle
 
+	# dict with records was saved to pickle, because otherwise python3.6 crashes when trying to recreate a dumped DataFrame
 	with open(t + 'table.pickle', 'rb') as f:
 		df = pd.DataFrame(pickle.load(f))
 
-	with mock.patch('erde.op.table.table_route', return_value=):
+	with mock.patch('erde.op.table.table_route', return_value=[df]):
 		p = ir.polygons
 		assert all(p.geometry.geom_almost_equals(gpd.GeoSeries(p.duration.map(polys.geometry), crs=4326)))

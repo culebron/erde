@@ -23,4 +23,5 @@ def main(output_path):
 	df = responses[0][0]
 	import pickle
 	with open(output_path, 'wb') as f:
+		# dict with records was saved to pickle, because otherwise python3.6 crashes when trying to recreate a dumped DataFrame
 		pickle.dump(df.to_dict(orient='records'), f)
