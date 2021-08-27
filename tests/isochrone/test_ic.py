@@ -1,6 +1,6 @@
 from erde import read_df, read_geom
 from erde.op import isochrone as ic
-from shapely.geometry import box
+from shapely.geometry import box, Point
 from unittest import mock
 import geopandas as gpd
 
@@ -39,6 +39,8 @@ def test_polygons():
 	import pickle
 
 	with open(t + 'table.pickle', 'rb') as f:
-		with mock.patch('erde.op.table.table_route', return_value=pickle.load(f)):
-			p = ir.polygons
-			assert all(p.geometry.geom_almost_equals(gpd.GeoSeries(p.duration.map(polys.geometry), crs=4326)))
+		df = pd.DataFrame(pickle.load(f))
+
+	with mock.patch('erde.op.table.table_route', return_value=):
+		p = ir.polygons
+		assert all(p.geometry.geom_almost_equals(gpd.GeoSeries(p.duration.map(polys.geometry), crs=4326)))

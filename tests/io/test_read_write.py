@@ -1,8 +1,10 @@
 from erde import io, read_df, write_df
-import os
-import pytest
-import pandas as pd
+from shapely.geometry import Point
+from unittest import mock
 import geopandas as gpd
+import os
+import pandas as pd
+import pytest
 
 
 d = 'tests/io/data/'
@@ -32,14 +34,12 @@ def test_geom_types():
 
 
 def test_exceptions_gpkg():
-	with pytest.raises(ValueError): read_df(f'{d}points.gpkg:nosuchlayer')
-	with pytest.raises(ValueError): read_df(f'{d}points.gpkg:')
-	with pytest.raises(ValueError): read_df(f'{d}no_file.gpkg')
+	for n in (f'{d}points.gpkg:nosuchlayer', f'{d}points.gpkg:', f'{d}no_file.gpkg', f'{d}multiple-layers-unclear.gpkg'):
+		with pytest.raises(ValueError):
+			read_df(n)
 
 	# must read and guess the layer by file own name
 	read_df(f'{d}multiple-layers.gpkg')
-	with pytest.raises(ValueError):
-		read_df(f'{d}multiple-layers-unclear.gpkg')
 
 def test_pg_id():
 	pgstr = 'postgresql://erdetest:erdetest@localhost:5432/erdetest'
@@ -59,3 +59,30 @@ def test_pg_id():
 
 	df = read_df(f'{pgstr}/houses')  # same but no geometry
 	assert isinstance(df, pd.DataFrame)
+
+
+def test_write_geom():
+	g = Point(1, 2)
+	from random import choice
+	crs = choice((4326, 3857, 2003, 2004, 2005))
+	fn = '/tmp/some-file.gpkg'
+	with mock.patch('erde.write_df') as wr:
+		from erde import write_geom
+		write_geom(g, fn, crs=crs)
+
+	df = wr.call_args[0][0]
+	assert len(df) == 1  # exactly one geometry
+	assert df.geometry[0] == g  # geometry is the only one
+	assert wr.call_args[0][1] == fn  # filename is what's expected
+	assert df.crs == crs  # CRS is set to the written GDF
+
+
+def test_read_geom():
+	from erde import read_geom
+	for gt in ('points', 'lines'):
+		for fmt in ('csv', 'gpkg', 'geojson', 'geojsonl.json', 'shp'):
+			fn = f'{d}points.{fmt}'
+			df = read_df(fn)
+			assert len(df) > 1  # if there's just 1 line, use another file in this test!
+			g = read_geom(fn)
+			assert g.equals(df.geometry[0])

@@ -20,6 +20,7 @@ def main(output_path):
 		ir = ic.IsochroneRouter(sources['geometry'].values[0], 'http://localhost:5000', (5, 10, 15), 5)
 		ir.routed
 
+	df = responses[0][0]
 	import pickle
 	with open(output_path, 'wb') as f:
-		pickle.dump(responses[0], f)
+		pickle.dump(df.to_dict(orient='records'), f)
