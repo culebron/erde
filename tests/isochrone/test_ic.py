@@ -43,8 +43,11 @@ def test_polygons():
 		df = pd.DataFrame(pickle.load(f))
 
 	with mock.patch('erde.op.isochrone.table_route', return_value=[df]):
-		p = ir.polygons
-		assert all(p.geometry.geom_almost_equals(gpd.GeoSeries(p.duration.map(polys.geometry), crs=4326)))
+		for i, r in ir.polygons.iterrows():
+			other = polys.loc[r.duration, 'geometry']
+			print(r['geometry'])
+			print(other)
+			assert r['geometry'].almost_equals(other)
 
 
 class PropertyMock(mock.Mock):
