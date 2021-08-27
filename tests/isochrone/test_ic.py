@@ -1,19 +1,13 @@
-from contextlib import contextmanager
-from erde import read_df, read_geom, write_df
+from erde import read_df, read_geom
 from erde.op import isochrone as ic
 from shapely.geometry import box
 from unittest import mock
 import geopandas as gpd
-import pytest
+
 
 t = 'tests/isochrone/'
 sources = read_df(t + 'sources.csv')
 
-
-#@contextmanager
-#def _requests_get():
-	#with mock.patch('erde.op.table.get_retry', return_value=)
-	#yield
 
 def get_ir():
 	return ic.IsochroneRouter(sources['geometry'].values[0], 'http://localhost:5000', (5, 10, 15), 5)
