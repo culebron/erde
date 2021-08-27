@@ -108,24 +108,23 @@ class IsochroneRouter:
 	def time_limit(self):
 		return max(self.levels)
 
-	@property
-	def grid_step(self):
+	def get_grid_step(self):
 		if self._grid_step is None:
 			# we'll put routing points every 30 seconds in a hexagonal grid
 			# we take square root of grid density to make it have linear effect on grid size
 			self._grid_step = self.speed / KMH2MPS * GRID_EVERY_N_SECONDS / (self.grid_density ** .5)
 		return self._grid_step
 
-	@grid_step.setter
 	def set_grid_step(self, val):
 		self._grid_step = val
+
+	grid_step = property(get_grid_step, set_grid_step)
 
 	@property
 	def bounds(self):
 		return utils.transform(self.origin, 4326, 3857).buffer(self.radius / utils.coslat(self.origin), resolution=3).bounds
 
-	@property
-	def grid(self):
+	def get_grid(self):
 		"""
 		Generates grid of points for isochrones.
 		"""
@@ -161,12 +160,12 @@ class IsochroneRouter:
 		self._grid = gpd.GeoDataFrame({'geometry': geoms}, crs=3857).to_crs(4326)
 		return self._grid
 
-	@grid.setter
 	def set_grid(self, grid):
 		self._grid = grid
 
-	@property
-	def routed(self):
+	grid = property(get_grid, set_grid)
+
+	def get_routed(self):
 		"""Generates table route results for the origin."""
 		if self._routed is not None:
 			return self._routed
@@ -186,9 +185,10 @@ class IsochroneRouter:
 		self._routed = result.to_crs(3857)
 		return self._routed
 
-	@routed.setter
 	def set_routed(self, val):
 		self._routed = val
+
+	routed = property(get_routed, set_routed)
 
 	@property
 	def raster(self):

@@ -45,3 +45,37 @@ def test_polygons():
 	with mock.patch('erde.op.isochrone.table_route', return_value=[df]):
 		p = ir.polygons
 		assert all(p.geometry.geom_almost_equals(gpd.GeoSeries(p.duration.map(polys.geometry), crs=4326)))
+
+
+class PropertyMock(mock.Mock):
+	def __get__(self, obj, obj_type=None):
+		return self(obj, obj_type)
+
+
+def test_set_grid():
+	ir = get_ir()
+
+	# test if setting (incorrect) grid will make the router return it, rather than a normal one
+
+	# 1. check if it returns a different one
+	expected_grid = read_df(t + 'grid.csv')[:2]  # just 2 points
+	assert len(ir.grid) != len(expected_grid)
+
+	# 2. set to new one
+	ir.grid = expected_grid
+	# 3. check if we get it from .grid
+	assert len(ir.grid) == len(expected_grid)
+
+	ir = get_ir()
+	from random import randint
+	ri = randint(0, 100000)
+
+	def new_grid(self, obj_type=None):
+		return ri
+
+	with mock.patch('erde.op.isochrone.IsochroneRouter.grid', new_callable=PropertyMock) as m:
+		m.side_effect = new_grid
+		assert ir.grid == ri
+
+	m.assert_called_once()
+	assert ir._grid is None
