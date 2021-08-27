@@ -1,7 +1,6 @@
 from erde import utils, CONFIG, dprint, autocli, write_df, write_stream
 from erde.op.table import table_route
-from matplotlib.tri import LinearTriInterpolator, Triangulation
-from shapely.geometry import Point, Polygon, MultiPolygon
+
 import geopandas as gpd
 import matplotlib.pyplot as plt
 import numpy as np
@@ -21,6 +20,7 @@ FULL_DURATION = 'full_duration'
 
 
 def raster2polygons(x, y, z, levels, level_field):
+	from shapely.geometry import MultiPolygon
 	if 0 not in levels:
 		levels = (0,) + tuple(levels)
 
@@ -123,6 +123,8 @@ class IsochroneRouter:
 		"""
 		Generates grid of points for isochrones.
 		"""
+		from shapely.geometry import Point
+		
 		if self._grid is not None:
 			return self._grid
 
@@ -187,6 +189,8 @@ class IsochroneRouter:
 	def raster(self):
 		"""Generates or returns the cached raster, from which the level cursev and polygons are made.
 		"""
+		from matplotlib.tri import LinearTriInterpolator, Triangulation
+
 		if len(self.grid) < 4:
 			return
 
@@ -215,6 +219,7 @@ class IsochroneRouter:
 
 	@property
 	def polygons(self):
+		from shapely.geometry import Polygon, MultiPolygon
 		if len(self.grid) < 4:
 			return
 
