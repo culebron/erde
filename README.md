@@ -1,16 +1,32 @@
-# Erde: GIS Library for Hikers
+# Erde: Hiking-Light GIS Library for Python
 
-Erde is like hiking: it should allow you start quickly, yet process very large datasets on a personal computer, without need for database servers or large-RAM machines.
-
-Making GIS processing apps with Erde takes minimum boilerplate.
-
-Erde also contains tools for repetitive tasks:
-
-* operations requiring spatial joins
-* calculating metric length, area, or building metric buffers
-* OSRM-based routing for large datasets
+This library is a toolset to start projects light and quick, with minimum overhead or boilerplate, with no special hardware or software. Yet it allows scaling up and process large datasets.
 
 ## Features
+
+1. Shorthands: read/write a GeoDataFrame from/to any format, write a single geometry into a geo-format file (no need to create a GeoDataFrame by hands).
+2. Chunk-wise IO for multiple formats.
+3. OSRM routing for large datasets: route lines, table routing, isochrones.
+4. Create command-line scripts with one decorator. Your scripts may process entire files, or chunks, or even generate chunks.
+5. Frequently used tools for GIS: area, length, etc.
+6. Lookups, aggregations with spatial join.
+7. Export or filter OSM files (.osm[.pbf|.gz|.bz2])
+
+## Features in Details
+
+### Shorthands
+
+Instead of `gdf.to_file('path', driver='GeoJSON')` the library offers shorthand functions that recognize formats and layers:
+
+	write_df(geodataframe1, 'file.geojson')
+	write_df(geodataframe2, 'another-file.gpkg:special-layer')
+	write_df(geodataframe3, 'third-file.csv')
+	
+GeoDataFrames are saved to/read from CSV files automatically, under the hood.
+
+Save a single geometry object to a file:
+
+	write_geom(polygon, 'single-polygon.csv')
 
 ### Easy Command-Line Scripts
 
@@ -78,14 +94,18 @@ Examples:
 
 		erde osm country1.osm.pbf country2.osm.pbf wr/highway country1-country2-hw.gpkg
 
+### Spatial Joins and Aggregations
+
+Most times, you need `gpd.sjoin` for 3 things:
+
+* intersect geometries and aggregate some field from those objects in the other dataframe
+* lookup another table (city/region) and get a field from there (size, name, domestic product, incomes, etc.)
+* filter a dataframe by objects in the other one
+
 ### GIS-specific Tools
 
 * shortcuts for common usecases of sjoin: lookup, aggregate by geometry, and filter by geometry
 * area/length/buffer in metres, all cleanup done under the hood
 * CRS conversion
 
-### Code organization
-
-* **chunk processing:** process large datasets in chunks, but still as dataframes, with @autocli or own code
-* **@autocli decorator** turns a function into a GIS-aware command-line app (without argparse pain)
 
