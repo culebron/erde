@@ -87,7 +87,7 @@ def _respond(url, params=None, retries=None):
 
 @contextmanager
 def make_server():
-	with mock.patch('erde.op.table.get_retry', side_effect=_respond) as m:
+	with mock.patch('erde.op.table.get_retry', side_effect=_respond) as m, mock.patch.dict(table.CONFIG['routers'], {'foot': 'http://localhost:5001', 'local': 'http://localhost:5000'}):
 		yield m
 
 
@@ -115,6 +115,7 @@ def test_route_chunk():
 			pd.DataFrame(resp[k + 's']).values
 		)
 
+@mock.patch.dict(table.CONFIG['routers'], {'foot': 'http://localhost:5001', 'local': 'http://localhost:5000'})
 def test_response_errors():
 	# error: the server responded with "coordinates invalid"
 	pts = [Point(1000, 2000), Point(100, 50), Point(100000, 200000)]

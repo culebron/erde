@@ -1,9 +1,9 @@
 from contextlib import contextmanager
 from erde import read_df, read_geom, CONFIG
 from erde.op import isochrone as ic
-from shapely.geometry import box, Point
+from shapely.geometry import box, Point  # needed for pickle load
 from unittest import mock
-import geopandas as gpd
+import geopandas as gpd  # needed for pickle load
 import pandas as pd
 
 t = 'tests/isochrone/'

@@ -145,7 +145,7 @@ def table_route(sources, destinations, router, max_table_size=2_000, threads=10,
 	"""
 	import re
 	if router not in CONFIG['routers'] and not re.match(r'^https?\://.*', router):
-		raise ValueError('router should be a key in erde config routers section, or a URL')
+		raise ValueError(f'router must be a key in erde config routers section, or a URL. got: \'{router}\'')
 
 	sources_indices = {i: v for i, v in enumerate(_index(sources))}
 	destinations_indices = {i: v for i, v in enumerate(_index(destinations))}
