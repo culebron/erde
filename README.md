@@ -102,6 +102,8 @@ Most times, you need `gpd.sjoin` for 3 things:
 * lookup another table (city/region) and get a field from there (size, name, domestic product, incomes, etc.)
 * filter a dataframe by objects in the other one
 
+Erde has 3 functions for those cases in [sjoin](./erde/op/sjoin.py) module: `slookup`, `sagg` and `sfilter`.
+
 ### GIS-specific Tools
 
 * shortcuts for common usecases of sjoin: lookup, aggregate by geometry, and filter by geometry
