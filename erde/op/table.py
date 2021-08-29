@@ -118,7 +118,7 @@ def _route_chunk(data, host_url, annotations='duration', retries=10, extra_param
 	return result_df
 
 
-def table_route(sources, destinations, mode, max_table_size=2_000, threads=10, annotations='duration', pbar=True, cache_name=None, executor='process', extra_params=None):
+def table_route(sources, destinations, router, max_table_size=2_000, threads=10, annotations='duration', pbar=True, cache_name=None, executor='process', extra_params=None):
 	"""Makes table routes between 2 sets of points (between all pairs of them), splitting requests more or less optimally to fit into max-table-size parameter.
 
 	OSRM may set an arbitrary limit on how many cells the table can have, and deny larger requests. With smaller `max_table_size`, table will be split into more smaller requests, and then the results will be concatenated. If possible, set it on the server to 100_000, this will work much faster.
@@ -131,8 +131,8 @@ def table_route(sources, destinations, mode, max_table_size=2_000, threads=10, a
 		Starting points.
 	destination : list, gpd.GeoSeries or gpd.GeoDataFrame
 		End points of trips.
-	mode : string
-		name of routing mode in the config, or URL
+	router : string
+		name of routing router in the config, or URL
 	max_table_size : int, default 2_000
 		maximum number of sources*destinations in a single request.
 	threads : int, default 10
@@ -143,6 +143,10 @@ def table_route(sources, destinations, mode, max_table_size=2_000, threads=10, a
 	DataFrame
 		Data frame, where each row is pair of source & destination. Columns are duration, distance (if requested in `annotations`), source_snap and destination_snap (distances from requested coordinates and the nearest graph edge).
 	"""
+	import re
+	if router not in CONFIG['routers'] and not re.match(r'^https?\://.*', router):
+		raise ValueError('router should be a key in erde config routers section, or a URL')
+
 	sources_indices = {i: v for i, v in enumerate(_index(sources))}
 	destinations_indices = {i: v for i, v in enumerate(_index(destinations))}
 	sources = _tolist(sources, 'sources')
@@ -153,7 +157,7 @@ def table_route(sources, destinations, mode, max_table_size=2_000, threads=10, a
 		raise ValueError("annotations must be one of these: 'duration', 'distance', or 'duration,distance' (order does not matter)")
 
 	mts = max_table_size
-	host_url = CONFIG['routers'].get(mode, mode)
+	host_url = CONFIG['routers'].get(router, router)
 
 	total_rows, total_cols = rows, cols = len(sources), len(destinations)
 	if cols * rows > mts:
@@ -180,7 +184,7 @@ def table_route(sources, destinations, mode, max_table_size=2_000, threads=10, a
 
 
 @autocli
-def main(sources: gpd.GeoDataFrame, destinations: gpd.GeoDataFrame, mode, annotations='duration', threads: int = 10, mts: int = 2000, keep_columns=None) -> write_stream:
+def main(sources: gpd.GeoDataFrame, destinations: gpd.GeoDataFrame, router, annotations='duration', threads: int = 10, mts: int = 2000, keep_columns=None) -> write_stream:
 	"""Makes table route requests between sources and destinations. Outputs the result as a GDF with LineString between each pair.
 
 	Parameters
@@ -189,7 +193,7 @@ def main(sources: gpd.GeoDataFrame, destinations: gpd.GeoDataFrame, mode, annota
 		Points of sources.
 	destinations : GeoDataFrame
 		Points of destinations.
-	mode : string
+	router : string
 		Name of router in Erde config, or URL (host + port).
 	threads : int, default 10
 		Number of threads to run and process requests.
@@ -203,7 +207,7 @@ def main(sources: gpd.GeoDataFrame, destinations: gpd.GeoDataFrame, mode, annota
 	GeoDataFrame
 
 	"""
-	t = table_route(sources['geometry'], destinations['geometry'], mode, annotations=annotations, max_table_size=mts, threads=threads)
+	t = table_route(sources['geometry'], destinations['geometry'], router, annotations=annotations, max_table_size=mts, threads=threads)
 
 	if keep_columns is not None:
 		keep_columns = keep_columns.split(',')

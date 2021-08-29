@@ -1,5 +1,5 @@
 from contextlib import contextmanager
-from erde import read_df, read_geom
+from erde import read_df, read_geom, CONFIG
 from erde.op import isochrone as ic
 from shapely.geometry import box, Point
 from unittest import mock
@@ -124,6 +124,7 @@ def test_set_grid_step():
 	ir2.grid_step *= 2
 	assert ir2.grid_step == ir.grid_step * 4
 
+
 def test_small_grid():
 	# in code, if the IsochroneRouter.grid is too small, some functions return None. Not sure if it's the right way to do it, but we'll test this behaviour.
 	ir = get_ir()
@@ -132,3 +133,69 @@ def test_small_grid():
 		assert ir.raster is None
 		assert ir.polygons is None
 		patched_route.assert_not_called()
+
+
+def _new_table_route(src, dst, mode, max_table_size=2_000, threads=10, annotations='duration', pbar=True, cache_name=None, executor='process', extra_params=None):
+	import numpy as np
+	# sources is list of 1 element (origin Point)
+	# destinations is gdf of points
+	p = np.array(src[0].coords)
+	if dst.crs is None:
+		dst.crs = 4326
+	dst2 = dst.to_crs(3857).copy()
+	# distance from source point + a wave like 7-end star
+	# distance
+	delta = np.array([dst2.geometry.x, dst2.geometry.y]).T - p
+	# formula of star
+	dst2['distance'] = np.sum(delta ** 2, axis=1) ** .5 * (np.cos(np.arctan2(*delta.T) * 7) + 2)
+	dst2['duration'] = dst2['distance'] / 1.67
+	dst2['geometry_dest'] = dst2['geometry']
+	dst2['geometry'] = src[0]
+	dst2['source_snap'] = 0
+	dst2['destination_snap'] = 0
+	return [dst2]
+
+
+def test_cli():
+	# 1. combinations of different params
+	# 3. mts is forwarded to table_route
+	# (sources: gpd.GeoDataFrame, router, durations, speed:float, grid_density:float = 1.0, max_snap: float = MAX_SNAP, mts: int = MAX_TABLE_SIZE, pbar:bool=False)
+
+	extra_params = {
+		'router': ['http://localhost:5000', 'foot', 'car'],
+		'durations': [(5, 10, 15), (10, 20, 30)],
+		'speed': [5],
+		'grid_density': [1, .5, 2],
+		'max_snap': [100, 200, 500],
+		'mts': [1000, 10_000, 100_000],
+	}
+
+	#checked_params = {'mode': 'router', 'max_table_size': 'mts'}
+
+	for changed_k, values in extra_params.items():
+		if len(values) < 2:  # this parameter does not change, no need to double-check it
+			continue
+
+		for val in values:
+			params = {k: v[0] for k, v in extra_params.items()}
+			params[changed_k] = val
+
+			with mock.patch('erde.op.isochrone.table_route', side_effect=_new_table_route) as m, mock.patch.dict(CONFIG['routers'], {'foot': 'http://localhost:5001', 'local': 'http://localhost:5000'}):
+				gen = ic.main(sources, **params)
+				polygons_df = next(gen)
+
+			m.assert_called_once()
+			ar, kw = m.call_args
+
+			assert set(polygons_df.duration) == set(params['durations'])
+			assert all(polygons_df.geometry.geom_type == 'MultiPolygon')
+			assert ar[2] == params['router']
+			assert kw['max_table_size'] == params['mts']
+			expected_grid_size = params['grid_density'] * max(params['durations']) ** 2 * 4.75
+			actual_grid_size = len(ar[1])
+
+			# make sure expected_grid_size is actual_grid_size with 5% precision
+			assert round(expected_grid_size / actual_grid_size * 20) == 20
+
+	# 2. params as strings => makes difference in results
+	pass

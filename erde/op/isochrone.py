@@ -1,4 +1,4 @@
-from erde import utils, CONFIG, dprint, autocli, write_df, write_stream
+from erde import utils, dprint, autocli, write_stream
 from erde.op.table import table_route
 
 import geopandas as gpd
@@ -68,11 +68,7 @@ class IsochroneRouter:
 
 	def __init__(self, origin, router, levels, speed:float):
 		self.origin = origin
-		import re
-		if router not in CONFIG['routers'] and not re.match(r'^https?\://.*', router):
-			raise ValueError('router should be a key in erde config routers section, or a URL')
-
-		self.router = CONFIG['routers'].get(router, router)
+		self.router = router  # lookup to CONFIG is done in table_route function, not here
 		self.levels = tuple(levels)
 		# speed should be upper limit on average moving speed in kmh.
 		# average speeds are:
@@ -225,6 +221,7 @@ class IsochroneRouter:
 
 		result = raster2polygons(*self.raster, [i * 60 for i in self.levels], POLY_DURATION_COL)
 		result['geometry'] = result.geometry.apply(lambda g: MultiPolygon([g]) if isinstance(g, Polygon) else g)
+		result['duration'] /= 60  # back to minutes
 		result.crs = 3857
 		return result.to_crs(4326)
 
@@ -286,19 +283,22 @@ def main(sources: gpd.GeoDataFrame, router, durations, speed:float, grid_density
 	# It would make sense to make `speed` unnecessary and stored in config, but no idea how to make it required if router is URL.
 
 	duration_col = durations in sources
-	if durations not in sources:
+	if not duration_col and isinstance(durations, str):
 		durations = tuple(float(i) for i in durations.split(','))
+	elif not duration_col:
+		durations = list(durations)  # converting iterable to list
 
 	from tqdm.auto import tqdm
 	for i, r in tqdm(sources.iterrows(), desc='Isochrones', total=len(sources), disable=not pbar):
+		r2 = r.to_dict()
 		ir = IsochroneRouter(
-			r.geometry,
+			r2['geometry'],
 			# all parameters can be names of columns
-			r.get(router, router),
-			r[durations] if duration_col else durations,
-			r.get(speed, speed))
+			r2.get(router, router),
+			r2[durations] if duration_col else durations,
+			r2.get(speed, speed))
 
-		ir.grid_density = r.get(grid_density, grid_density)
-		ir.max_snap = r.get(max_snap, max_snap)
-		ir.mts = r.get(mts, mts)
+		ir.grid_density = r2.get(grid_density, grid_density)
+		ir.max_snap = r2.get(max_snap, max_snap)
+		ir.mts = r2.get(mts, mts)
 		yield ir.polygons
