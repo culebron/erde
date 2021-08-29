@@ -289,6 +289,7 @@ def main(sources: gpd.GeoDataFrame, router, durations, speed:float, grid_density
 		durations = list(durations)  # converting iterable to list
 
 	from tqdm.auto import tqdm
+	idx = 0
 	for i, r in tqdm(sources.iterrows(), desc='Isochrones', total=len(sources), disable=not pbar):
 		r2 = r.to_dict()
 		ir = IsochroneRouter(
@@ -301,4 +302,8 @@ def main(sources: gpd.GeoDataFrame, router, durations, speed:float, grid_density
 		ir.grid_density = r2.get(grid_density, grid_density)
 		ir.max_snap = r2.get(max_snap, max_snap)
 		ir.mts = r2.get(mts, mts)
-		yield ir.polygons
+		gdf = ir.polygons
+		gdf['source'] = i
+		gdf.index = pd.RangeIndex(idx, idx + len(gdf))
+		idx += len(gdf)
+		yield gdf

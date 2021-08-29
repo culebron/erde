@@ -216,6 +216,16 @@ def test_string_params():
 	for k, v in extra_params.items():
 		s2[k] = (v * len(s2))[:len(s2)]
 
-	with _patch_table_route():
+	assert len(s2.mts.unique()) > 1
+	assert len(s2.router.unique()) > 1
+
+	with _patch_table_route() as m:
 		resp = pd.concat(ic.main(s2, **{k: k for k in extra_params.keys()}))
 		print(resp)
+
+	for args, row in zip(m.call_args_list, s2.to_dict(orient='records')):
+		ar, kw = args
+
+		assert ar[0][0] == row['geometry']
+		assert ar[2] == row['router']
+		assert kw['max_table_size'] == row['mts']
