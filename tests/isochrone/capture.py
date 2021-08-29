@@ -1,7 +1,7 @@
-from erde import autocli
+from erde import autocli, write_df
 
 @autocli
-def main(output_path):
+def main(table_path, polygons_path):
 	from erde.op import table
 
 	responses = [None]
@@ -22,6 +22,8 @@ def main(output_path):
 
 	df = responses[0][0]
 	import pickle
-	with open(output_path, 'wb') as f:
+	with open(table_path, 'wb') as f:
 		# dict with records was saved to pickle, because otherwise python3.6 crashes when trying to recreate a dumped DataFrame
 		pickle.dump(df.to_dict(orient='records'), f)
+
+	write_df(ir.polygons, polygons_path)

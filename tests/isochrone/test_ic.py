@@ -45,9 +45,7 @@ def test_polygons():
 	polys.crs = 4326
 	polys.to_crs(3857, inplace=True)
 
-	df = _get_pickled_table()
-
-	with mock.patch('erde.op.isochrone.table_route', return_value=[df]):
+	with mock.patch('erde.op.isochrone.table_route', return_value=[_get_pickled_table()]):
 		for i, r in ir.polygons.to_crs(3857).iterrows():
 			other = polys.loc[r.duration, 'geometry']
 			# geom_almost_equals sometimes does not work, but difference is in micrometers. To fix it, let's expand polygons by 10 cm and check if the other is inside. If difference is any bigger, one will stick out.
@@ -137,9 +135,10 @@ def test_small_grid():
 
 def _new_table_route(src, dst, mode, max_table_size=2_000, threads=10, annotations='duration', pbar=True, cache_name=None, executor='process', extra_params=None):
 	import numpy as np
+	from erde import utils
 	# sources is list of 1 element (origin Point)
 	# destinations is gdf of points
-	p = np.array(src[0].coords)
+	p = np.array(utils.transform(src[0], 4326, 3857).coords)
 	if dst.crs is None:
 		dst.crs = 4326
 	dst2 = dst.to_crs(3857).copy()
@@ -149,6 +148,7 @@ def _new_table_route(src, dst, mode, max_table_size=2_000, threads=10, annotatio
 	# formula of star
 	dst2['distance'] = np.sum(delta ** 2, axis=1) ** .5 * (np.cos(np.arctan2(*delta.T) * 7) + 2)
 	dst2['duration'] = dst2['distance'] / 1.67
+	dst2.to_crs(4326, inplace=True)
 	dst2['geometry_dest'] = dst2['geometry']
 	dst2['geometry'] = src[0]
 	dst2['source_snap'] = 0
@@ -156,21 +156,26 @@ def _new_table_route(src, dst, mode, max_table_size=2_000, threads=10, annotatio
 	return [dst2]
 
 
+@contextmanager
+def _patch_table_route():
+	with mock.patch('erde.op.isochrone.table_route', side_effect=_new_table_route) as m, mock.patch.dict(CONFIG['routers'], {'foot': 'http://localhost:5001', 'local': 'http://localhost:5000'}):
+		yield m
+
+
+extra_params = {
+	'router': ['http://localhost:5000', 'foot', 'car'],
+	'durations': [(5, 10, 15), (10, 20, 30)],
+	'speed': [5],
+	'grid_density': [1, .5, 2],
+	'max_snap': [100, 200, 500],
+	'mts': [1000, 10_000, 100_000],
+}
+
+
 def test_cli():
 	# 1. combinations of different params
-	# 3. mts is forwarded to table_route
+	# 2. mts is forwarded to table_route
 	# (sources: gpd.GeoDataFrame, router, durations, speed:float, grid_density:float = 1.0, max_snap: float = MAX_SNAP, mts: int = MAX_TABLE_SIZE, pbar:bool=False)
-
-	extra_params = {
-		'router': ['http://localhost:5000', 'foot', 'car'],
-		'durations': [(5, 10, 15), (10, 20, 30)],
-		'speed': [5],
-		'grid_density': [1, .5, 2],
-		'max_snap': [100, 200, 500],
-		'mts': [1000, 10_000, 100_000],
-	}
-
-	#checked_params = {'mode': 'router', 'max_table_size': 'mts'}
 
 	for changed_k, values in extra_params.items():
 		if len(values) < 2:  # this parameter does not change, no need to double-check it
@@ -180,7 +185,7 @@ def test_cli():
 			params = {k: v[0] for k, v in extra_params.items()}
 			params[changed_k] = val
 
-			with mock.patch('erde.op.isochrone.table_route', side_effect=_new_table_route) as m, mock.patch.dict(CONFIG['routers'], {'foot': 'http://localhost:5001', 'local': 'http://localhost:5000'}):
+			with _patch_table_route() as m:
 				gen = ic.main(sources, **params)
 				polygons_df = next(gen)
 
@@ -197,5 +202,20 @@ def test_cli():
 			# make sure expected_grid_size is actual_grid_size with 5% precision
 			assert round(expected_grid_size / actual_grid_size * 20) == 20
 
-	# 2. params as strings => makes difference in results
-	pass
+
+def test_geometry_validity():
+	with _patch_table_route():
+		ir = get_ir()
+		poly_gdf = ir.polygons
+		assert all(poly_gdf.geometry.contains(ir.origin))
+
+
+def test_string_params():
+	# 3. params as strings => makes difference in results
+	s2 = sources.copy()
+	for k, v in extra_params.items():
+		s2[k] = (v * len(s2))[:len(s2)]
+
+	with _patch_table_route():
+		resp = pd.concat(ic.main(s2, **{k: k for k in extra_params.keys()}))
+		print(resp)

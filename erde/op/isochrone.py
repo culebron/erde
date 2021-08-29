@@ -97,7 +97,7 @@ class IsochroneRouter:
 	def raster_size(self):
 		"""Size of raster grid."""
 		from math import log
-		return int(round(self.radius / max(log(self.radius * 2, 2), 1)))
+		return int(round(self.radius * 2 / max(log(self.radius, 2), 1)))
 
 	def get_grid_step(self):
 		if self._grid_step is None:
@@ -165,9 +165,9 @@ class IsochroneRouter:
 
 		origin_gdf = gpd.GeoDataFrame({'geometry': [self.origin], FULL_DURATION: [0]}, index=[-1], crs=4326)
 		result = pd.concat(table_route([self.origin], self.grid, self.router, max_table_size=self.mts, pbar=False))
+
 		result['geometry'] = result['geometry_dest']
 		result.drop(['new_geometry', 'new_geometry_dest', 'geometry_dest'], axis=1, errors='ignore', inplace=True)
-
 		result = gpd.GeoDataFrame(result, crs=4326)
 		result = result.iloc[result['duration'].to_numpy().nonzero()[0]][:]
 
