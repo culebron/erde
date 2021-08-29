@@ -48,7 +48,7 @@ def test_polygons():
 	with mock.patch('erde.op.isochrone.table_route', return_value=[_get_pickled_table()]):
 		for i, r in ir.polygons.to_crs(3857).iterrows():
 			other = polys.loc[r.duration, 'geometry']
-			# geom_almost_equals sometimes does not work, but difference is in micrometers. To fix it, let's expand polygons by 10 cm and check if the other is inside. If difference is any bigger, one will stick out.
+			# geom_almost_equals sometimes does not work even when difference is in micrometers. To fix it, let's expand polygons by 10 cm and check if the other is inside. If difference is any bigger, one will stick out.
 			assert r.geometry.within(other.buffer(.1, resolution=3))
 			assert other.within(r.geometry.buffer(.1, resolution=3))
 
