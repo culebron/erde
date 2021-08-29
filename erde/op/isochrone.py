@@ -137,20 +137,12 @@ class IsochroneRouter:
 		ystep = grid_step_local * 2 * (3 ** .5)
 		yoffset = ystep / 2
 
-		x, y = np.mgrid[x1:x2 + 1:xstep, y1:y2 + 1:ystep]
-		xlist = list(x.flatten())
-		ylist = list(y.flatten())
-
-		dprint(f'grid {len(xlist)}')
-
+		p1 = np.mgrid[x1:x2 + 1:xstep, y1:y2 + 1:ystep]
 		# hex-grid second half, shifted by half xstep/ystep
 		# but upper limits on X & Y should be the same to fit in the box
-		x, y = np.mgrid[x1 + xoffset:x2 + .1:xstep, y1 + yoffset:y2 + .1:ystep]
-		xlist += list(x.flatten())
-		ylist += list(y.flatten())
-
-		geoms = gpd.GeoSeries(list(map(Point, zip(xlist, ylist))))
-		self._grid = gpd.GeoDataFrame({'geometry': geoms}, crs=3857).to_crs(4326)
+		p2 = np.mgrid[x1 + xoffset:x2 + .1:xstep, y1 + yoffset:y2 + .1:ystep]
+		points = [Point(*p) for b in list(p1.T) + list(p2.T) for p in b]
+		self._grid = gpd.GeoDataFrame({'geometry': points}, crs=3857).to_crs(4326)
 		return self._grid
 
 	def set_grid(self, grid):
