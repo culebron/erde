@@ -128,7 +128,7 @@ def sfilter(left_df, filter_geom, left_on='geometry', right_on='geometry', negat
 	----------
 	left_df : GeoDataFrame
 		What to filter.
-	right_df : GeoDataFrame, GeoSeries, shapely geometry
+	filter_geom : GeoDataFrame, GeoSeries, shapely geometry
 		With what to filter.
 	left_on : str or GeoSeries, default 'geometry'
 		Column in the left GeoDataFrame or a GeoSeries with the same index, by which to do spatial join. Not added anywhere.
@@ -155,7 +155,7 @@ def sfilter(left_df, filter_geom, left_on='geometry', right_on='geometry', negat
 		filter_geom = gpd.GeoDataFrame({'geometry': [filter_geom]}, crs=left_df.crs)
 	elif isinstance(filter_geom, gpd.GeoSeries):
 		filter_geom = gpd.GeoDataFrame({'geometry': filter_geom})
-	
+
 	m = _sj(left_df, filter_geom, left_on, right_on, op, 'inner')
 	isin = left_df.index.isin(m.index)
 	if negative: isin = ~isin
