@@ -121,14 +121,14 @@ def slookup(left_df, right_df, columns, left_on='geometry', right_on='geometry',
 	return sagg(left_df, right_df, {k: 'first' for k in columns}, left_on, right_on, suffixes, join, op)
 
 
-def sfilter(left_df, right_df, left_on='geometry', right_on='geometry', negative=False, op='intersects'):
+def sfilter(left_df, filter_geom, left_on='geometry', right_on='geometry', negative=False, op='intersects'):
 	"""Filters left_df by geometries in right_df.
 
 	Parameters
 	----------
 	left_df : GeoDataFrame
 		What to filter.
-	right_df : GeoDataFrame
+	right_df : GeoDataFrame, GeoSeries, shapely geometry
 		With what to filter.
 	left_on : str or GeoSeries, default 'geometry'
 		Column in the left GeoDataFrame or a GeoSeries with the same index, by which to do spatial join. Not added anywhere.
@@ -147,7 +147,16 @@ def sfilter(left_df, right_df, left_on='geometry', right_on='geometry', negative
 		This is filtered `left_df` (a view of the original, not a copy).
 	"""
 
-	m = _sj(left_df, right_df, left_on, right_on, op, 'inner')
+	from shapely.geometry.base import BaseGeometry
+	if not isinstance(filter_geom, (gpd.GeoDataFrame, gpd.GeoSeries, BaseGeometry)):
+		raise TypeError(f'filter_geom should be GeoDataFrame, GeoSeries or shapely geometry, got {filter_geom.__class__} instead')
+
+	if isinstance(filter_geom, BaseGeometry):
+		filter_geom = gpd.GeoDataFrame({'geometry': [filter_geom]}, crs=left_df.crs)
+	elif isinstance(filter_geom, gpd.GeoSeries):
+		filter_geom = gpd.GeoDataFrame({'geometry': filter_geom})
+	
+	m = _sj(left_df, filter_geom, left_on, right_on, op, 'inner')
 	isin = left_df.index.isin(m.index)
 	if negative: isin = ~isin
 	return left_df[isin]

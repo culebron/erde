@@ -61,6 +61,16 @@ def test_sfilter():
 	j1n = sjoin.sfilter(pts, polys, negative=True)
 	assert set(j1n['name']) == set('EH')
 
+	# check if filter can accept geoseries or a single geometry
+	j3 = sjoin.sfilter(pts, polys.geometry)
+	assert set(j3['name']) == set('ABCDFGI')
+
+	j4 = sjoin.sfilter(pts, polys.geometry[0])
+	assert set(j4['name']) == set('CFI')
+
+	with pytest.raises(TypeError):
+		sjoin.sfilter(pts, 123456)
+
 
 def test_df_on():
 	# must pass with 'geometry' and the geometry column
