@@ -159,4 +159,4 @@ def main(input_data: read_stream, mode, overview='full', annotations=ANNOTATIONS
 		with ThreadPoolExecutor(max_workers=threads) as tpe:
 			result = tpe.map(fn, rows)
 
-	return gpd.GeoDataFrame(itertools.chain(*result))
+	return gpd.GeoDataFrame(itertools.chain(*result), crs=4326)

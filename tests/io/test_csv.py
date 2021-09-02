@@ -1,6 +1,5 @@
 from erde import read_df, read_stream, write_stream
 from erde.io import csv
-from unittest import mock
 import geopandas as gpd
 import pytest
 
@@ -61,3 +60,14 @@ def test_exceptions_csv():
 		assert not isinstance(df, gpd.GeoDataFrame)
 		assert df['WKT'].dtype == 'object'
 		# do in cycle to go back from yield statement and cover the code
+
+def test_rows_correct():
+	# CSV reader used to return incorrect number of rows
+	df = read_df(d + 'points.csv')
+	df_len = len(df)
+	import tempfile
+	tmp_path = tempfile.gettempdir() + '/tmppoints.csv'
+	df.to_csv(tmp_path)
+
+	x = csv.CsvReader(tmp_path)
+	assert len(x) == df_len

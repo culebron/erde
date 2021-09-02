@@ -36,7 +36,7 @@ class CsvReader(BaseReader):
 			self.schema['geometry'] = loads(df.pop(self.geom_col)[0]).geom_type
 
 		with open(self.source) as f:
-			self.total_rows = sum(1 for i in f)
+			self.total_rows = sum(1 for i in f if len(i) > 1) - 1
 
 	def _read_sync(self):
 		for geometry in self.geometry_filter_pbar:
