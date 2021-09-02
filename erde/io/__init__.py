@@ -17,8 +17,9 @@ def _try_gdf(df, geometry_columns=('geometry', 'WKT'), crs=None):
 			except (TypeError, AttributeError, WKTReadingError):
 				print("warning: can't transform empty or broken geometry", file=sys.stderr)
 			else:
-				if k not in geometry_columns: df.pop(k)
+				df.pop(k)
 				geometry_ok = True
+				break
 
 	if geometry_ok:
 		return gpd.GeoDataFrame(df, crs=crs)

@@ -12,3 +12,4 @@ __version__.py
 .docs
 *.qmd
 .erde.cfg.yml
+.ipynb_checkpoints

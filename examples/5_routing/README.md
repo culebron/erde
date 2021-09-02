@@ -1,6 +1,6 @@
 # Routing
 
-This is an example of `route` method usage.
+This is an example of `route` method usage. See [the notebook](./Routing Example.ipynb) for interactive examples.
 
 Please, do not use openstreetmap.de routers for mass routing, they're a non-commercial demo. Get a [Docker image](https://hub.docker.com/u/osrm/) and run your own local OSRM, this will give you much higher performance.
 
@@ -10,6 +10,10 @@ Sample of input CSV:
 	"LINESTRING (-21.9348912 64.1440043,-21.9338223 64.1453913)","1","A"
 	"LINESTRING (-21.9285042 64.1443567,-21.9322321 64.1432880)","2","B"
 
+On map:
+
+![Route directions on the map](./reyk-directions.jpg)
+
 Every LineString is treated as a sequence of points: start poirt, (number of waypoints), destination.
 
 Run this command to see the script working:
@@ -17,6 +21,10 @@ Run this command to see the script working:
 	$ erde route reykjavik-directions.csv https://routing.openstreetmap.de/routed-foot routes.geojson
 
 (Input and output formats can be any: CSV, GeoJSON, GPKG, Shape.)
+
+Resulting routes on map:
+
+![Result routes](./reyk-routes.jpg)
 
 In the result file, the attributes of input are preserved, the geometry is replaced with the best route geometry, and 3 more added: `alternative`, `distance`, `duration`.
 

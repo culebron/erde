@@ -7,7 +7,7 @@ USER_CONFIG_PATH = os.path.join(os.path.expanduser("~"), '.erde.yml')
 # to override this config, put .erde.yml into your home folder
 CONFIG = {
 	'routers': {
-		'car': 'https://routing.openstreetmap.de/routed-car'
+		'local': 'http://localhost:5000'
 	}
 }
 
