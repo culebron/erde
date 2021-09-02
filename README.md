@@ -104,11 +104,11 @@ Examples:
 
 * Merge several files:
 
-		erde osm country1.osm.pbf country2.osm.pbf wr/highway country1-country2-hw.osm.pbf
+		erde osm country1.osm.pbf country2.osm.pbf country1-country2-hw.osm.pbf
 
 * Filter by tag, merge and convert only linestrings:
 
-		erde osm country1.osm.pbf country2.osm.pbf wr/highway country1-country2-hw.gpkg
+		erde osm country1.osm.pbf country2.osm.pbf wr/highway country1-country2-hw.gpkg -l lines
 
 ### Spatial Joins and Aggregations
 
