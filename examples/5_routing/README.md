@@ -1,6 +1,6 @@
 # Routing
 
-This is an example of `route` method usage. See [the notebook](./Routing Examples.ipynb) for interactive examples.
+This is an example of `route` method usage. See [the notebook](./Routing%20Examples.ipynb) for interactive examples.
 
 Please, do not use openstreetmap.de routers for mass routing, they're a non-commercial demo. Get a [Docker image](https://hub.docker.com/u/osrm/) and run your own local OSRM, this will give you much higher performance.
 
