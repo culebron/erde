@@ -337,7 +337,17 @@ def autocli(func):
 	return func
 
 
-commands = ['buffer', 'convert', 'area', 'length', 'route', 'table', 'osm', 'isochrone']
+commands = [
+	'area',
+	'buffer',
+	'convert',
+	'isochrone',
+	'length',
+	'osm',
+	'route',
+	'subset',
+	'table',
+]
 
 import importlib
 
