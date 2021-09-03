@@ -20,6 +20,7 @@ def parse_str(columns):
 		result.append(j)
 	return result
 
+
 @autocli
 def main(input_data: read_stream, columns) -> write_stream:
 	"""Renames, removes and checks presence of columns in a (geo)dataframe.

@@ -13,3 +13,4 @@ __version__.py
 *.qmd
 .erde.cfg.yml
 .ipynb_checkpoints
+*.osrm*

@@ -1,0 +1,39 @@
+version: '3'
+
+services:
+  extract:
+    image: osrm/osrm-backend:v5.25.0
+    volumes:
+      - ./osrm:/osrm
+    entrypoint: osrm-extract /osrm/foot.osm.pbf -p ${LUA:-foot.lua}
+
+  partition:
+    image: osrm/osrm-backend:v5.25.0
+    volumes:
+      - ./osrm:/osrm
+    entrypoint: osrm-partition /osrm/foot.osrm
+
+  customize:
+    image: osrm/osrm-backend:v5.25.0
+    volumes:
+      - ./osrm:/osrm
+    entrypoint: osrm-customize /osrm/foot.osrm
+
+  backend:
+    image: osrm/osrm-backend:v5.25.0
+    restart: always
+    volumes:
+      - ./osrm:/osrm
+    network_mode: host
+    entrypoint: osrm-routed /osrm/foot.osrm -t 8 --max-table-size=100000 --port 5000 --algorithm=MLD
+    # environment:
+    #   DISABLE_ACCESS_LOGGING: 1
+
+  frontend:
+    image: osrm/osrm-frontend:latest
+    restart: always
+    network_mode: host
+    environment:
+      OSRM_BACKEND: http://localhost:5000
+      OSRM_CENTER: 54.849,83.085
+      OSRM_ZOOM: 13
