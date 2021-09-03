@@ -4,6 +4,11 @@ def parse_str(columns):
 	result = []
 	for i in columns.split(','):
 		j = [k.strip() for k in i.strip().split(':')]
+
+		for k in j:
+			if len(k) == 0 or (len(k) == 1 and k.startswith('-')):
+				raise ValueError(f'Bad column name: "{i}": zero name length.')
+
 		if len(j) > 2:
 			raise ValueError(f"column name must have 0 or 1 colons (:) got {len(i) - 1} in '")
 

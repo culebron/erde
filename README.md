@@ -47,17 +47,17 @@ See [the example](examples/2_minimal_cli_app/) for more code and instructions.
 
 Instead of doing this:
 
-	df.rename(columns={'oldname1': 'newname1', 'oldname2': 'newname2'}, inplace=True)
-	df.drop(['oldcol3', 'oldcol4'], inplace=True, axis=1, errors='ignore')
+	df.rename(columns={'oldname1': 'newname1'}, inplace=True)
+	df.drop(['oldcol2'], inplace=True, axis=1, errors='ignore')
 
 you can simply do this:
 
 	from erde import subset
-	df = subset(df, 'oldname1: newname1, oldname2: newname2, -oldcol3, -oldcol4, *')
+	df = subset(df, 'oldname1: newname1, -oldcol2, *')
 
 Or even run this from command line:
 
-	erde subset old_file.gpkg oldname1:newname1,oldname2:newname2,-oldcol3,-oldcol4,* new_file.gpkg
+	erde subset old_file.gpkg oldname1:newname1,-oldcol2,* new_file.gpkg
 
 ### Routing
 
