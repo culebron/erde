@@ -3,8 +3,7 @@ from erde import CONFIG, autocli, write_stream, utils
 from erde.op.route import get_retry
 from functools import partial
 from itertools import product
-from polyline import encode as encode_poly
-from tqdm import tqdm
+
 from yaargh import CommandError
 import geopandas as gpd
 import pandas as pd
@@ -54,6 +53,8 @@ def _route_chunk(data, host_url, annotations='duration', retries=10, extra_param
 
 	"""
 	# offsets are used to make correct indice of the result dataframe
+	from polyline import encode as encode_poly
+
 	sources, destinations, sources_offset, destinations_offset = data
 	sources_count = len(sources)
 	destinations_count = len(destinations)
@@ -143,7 +144,9 @@ def table_route(sources, destinations, router, max_table_size=2_000, threads=10,
 	DataFrame
 		Data frame, where each row is pair of source & destination. Columns are duration, distance (if requested in `annotations`), source_snap and destination_snap (distances from requested coordinates and the nearest graph edge).
 	"""
+	from tqdm import tqdm
 	import re
+	
 	if router not in CONFIG['routers'] and not re.match(r'^https?\://.*', router):
 		raise ValueError(f'router must be a key in erde config routers section, or a URL. got: \'{router}\'')
 

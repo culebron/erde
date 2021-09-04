@@ -1,8 +1,7 @@
-from erde import utils, dprint, autocli, write_stream, subset
+from erde import utils, autocli, write_stream
 from erde.op.table import table_route
 
 import geopandas as gpd
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
@@ -21,6 +20,8 @@ FULL_DURATION = 'full_duration'
 
 def raster2polygons(x, y, z, levels, level_field):
 	from shapely.geometry import MultiPolygon
+	import matplotlib.pyplot as plt
+
 	if 0 not in levels:
 		levels = (0,) + tuple(levels)
 
@@ -151,6 +152,8 @@ class IsochroneRouter:
 	grid = property(get_grid, set_grid)
 
 	def get_routed(self):
+		from erde import subset
+
 		"""Generates table route results for the origin."""
 		if self._routed is not None:
 			return self._routed
@@ -159,6 +162,7 @@ class IsochroneRouter:
 		result = pd.concat(table_route([self.origin], self.grid, self.router, max_table_size=self.mts, pbar=False))
 
 		result['geometry'] = result['geometry_dest']
+		#from erde import subset
 		result = gpd.GeoDataFrame(subset(result, '-new_geometry,-new_geometry_dest,-geometry_dest'), crs=4326)
 		result = result.iloc[result['duration'].to_numpy().nonzero()[0]][:]
 
