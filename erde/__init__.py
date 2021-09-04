@@ -296,17 +296,18 @@ def autocli(func):
 			if an == read_stream:  # streaming cli app
 				input_streams += 1  # must count number of read_stream, as only 1 is allowed
 				stream_arg_id = i
+				decorated = yaargh.decorators.arg(par.name.replace('_', '-'), type=TYPE_OPENERS.get(an, an))(decorated)
 				continue
 
 			# argument with default vaulue = optional, & it must start with dashes
 			# otherwise its considered positional (required), and that contradiction causes an exception
 			if par.default is not inspect._empty:
-				names = ['-' + par.name[0], '--' + par.name]
+				names = ['-' + par.name[0], '--' + par.name.replace('_', '-')]
 				# if another param starts with this letter, remove the short version
 				if letters[par.name[0]] >= 2:
 					names = names[1:]
 			else:
-				names = [par.name]
+				names = [par.name.replace('_', '-')]
 
 			if an != bool:
 				decorated = yaargh.decorators.arg(*names, type=TYPE_OPENERS.get(an, an))(decorated)

@@ -1,4 +1,4 @@
-from erde import utils, dprint, autocli, write_stream
+from erde import utils, dprint, autocli, write_stream, subset
 from erde.op.table import table_route
 
 import geopandas as gpd
@@ -159,11 +159,11 @@ class IsochroneRouter:
 		result = pd.concat(table_route([self.origin], self.grid, self.router, max_table_size=self.mts, pbar=False))
 
 		result['geometry'] = result['geometry_dest']
-		result.drop(['new_geometry', 'new_geometry_dest', 'geometry_dest'], axis=1, errors='ignore', inplace=True)
-		result = gpd.GeoDataFrame(result, crs=4326)
+		result = gpd.GeoDataFrame(subset(result, '-new_geometry,-new_geometry_dest,-geometry_dest'), crs=4326)
 		result = result.iloc[result['duration'].to_numpy().nonzero()[0]][:]
 
 		result[FULL_DURATION] = result.duration + (result.source_snap + result.destination_snap) / SNAP_SPEED * KMH2MPS
+		result.loc[result.destination_snap > self.max_snap, FULL_DURATION] = 36000
 		result = pd.concat([result, origin_gdf])
 		self._routed = result.to_crs(3857)
 		return self._routed
