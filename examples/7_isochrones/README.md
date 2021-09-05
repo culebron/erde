@@ -35,3 +35,16 @@ Result `isochrones.gpkg` on map:
 ![Multiple isochrones](./map2.jpg)
 
 You can open QGIS project [`example2.qgz`](./example2.qgz) with these styles.
+
+
+## Importing from Your Code
+
+Script [reach_index.py](./reach_index.py) uses isochrones to build an index of accessibility. The larger the area reachable within time is, the better.
+
+Usage:
+
+    python3 reach_index.py sources.csv accessibility.gpkg
+
+Resulting file should look like this in QGIS:
+
+![Isochrones with accessibility index](./map3.jpg) ![Table of reach index](./table3.png)
