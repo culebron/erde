@@ -8,7 +8,7 @@ The [compose file](./docker-compose.yml) has everything necessary. In [`osrm`](.
 
 ![Houses and schools and the area](./area.jpg)
 
-(To make your own area, [download an osm.pbf file](https://wiki.openstreetmap.org/wiki/Downloading_data) and put it into `osrm` folder, rename as `foot.osm.pbf`.)
+(To make your own area, [download an osm.pbf file](https://wiki.openstreetmap.org/wiki/Planet.osm#Country_and_area_extracts) and put it into `osrm` folder, rename as `foot.osm.pbf`.)
 
 **Building**
 
