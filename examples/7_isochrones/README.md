@@ -12,7 +12,9 @@ With a local server running, you can go to this folder on local drive and run fr
 
     erde isochrone one-source.csv local 15 5 one-isochrone.gpkg
 
-Run the command, then add the new `one-isochrone.gpkg` file as a layer to QGIS. Or, after the .gpkg file has been created, open [`example.qgz`](./example1.qgz) with QGIS. The map should look like this:
+Run the command, then add the new `one-isochrone.gpkg` file as a layer to QGIS. Or, after the .gpkg file has been created, open [`example.qgz`](./example1.qgz) with QGIS.
+
+The result file should contain exactly one polygon, a 15-minute walking isochrone for one point. On a map, it should look like this:
 
 ![Isochrone map](./map1.jpg)
 
