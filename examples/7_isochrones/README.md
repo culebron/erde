@@ -4,7 +4,7 @@
 
 This tutorial requires [QGIS](https://qgis.org/) to visualise geospatial files. In QGIS you should also install QuickMapServices (QMS) plugin to see tiled background layers.
 
-Isochrones module uses [OSRM table requests](https://github.com/Project-OSRM/osrm-backend/blob/master/docs/http.md#table-service). Demo servers do not have this feature, so you'll have to set up your own server. Follow [this instruction](../local-osrm.md) to set it up.
+Isochrones module uses [OSRM table requests](https://github.com/Project-OSRM/osrm-backend/blob/master/docs/http.md#table-service). Demo servers do not have this feature, so you'll have to set up your own server. Follow [this instruction](../OSRM.md) to set it up.
 
 ## Hello, World Demo
 
