@@ -6,5 +6,5 @@ polyline
 requests
 tqdm
 yaargh
-shapely --no-binary shapely
-pygeos --no-binary pygeos
+shapely --no-binary=shapely
+pygeos --no-binary=pygeos

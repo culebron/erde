@@ -10,9 +10,9 @@ def read(fname):
 
 
 def parse_requirements(filename):
-    return [line.strip()
+    return [i
             for line in read(filename).strip().split('\n')
-            if line.strip()]
+            if line.strip() for i in line.strip().split() if not i.startswith('--')]  # requirements.txt may contain --no-binary for convenience
 
 
 pkg = {}
@@ -23,7 +23,7 @@ exec(read('erde/_version.py'), ver)
 ver['write_version']('erde/__version__.py')
 exec(read('erde/__version__.py'), pkg)
 
-readme = "" # read('README.md')
+readme = read('README.md')
 requirements = parse_requirements('requirements.txt')
 
 setup(
