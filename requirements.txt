@@ -1,12 +1,8 @@
 PyYAML
-geojson
 geopandas
 ipdb
 matplotlib
 polyline
-pygeos
-pyproj
 requests
-sqlalchemy
 tqdm
 yaargh
