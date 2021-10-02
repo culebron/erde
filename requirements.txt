@@ -1,12 +1,10 @@
 PyYAML
-geojson
 geopandas
 ipdb
 matplotlib
 polyline
-pygeos
-pyproj
 requests
-sqlalchemy
 tqdm
 yaargh
+shapely --no-binary=shapely
+pygeos --no-binary=pygeos
