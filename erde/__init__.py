@@ -213,7 +213,6 @@ def autocli(func):
 	@wraps(func)
 	def decorated(*args, **kwargs):
 		execution_start = time.time()
-
 		with debug_capture() as stack:
 			"""
 			all possible combos of input/output and function/generator (2*2*3 == 12):

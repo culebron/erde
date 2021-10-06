@@ -99,3 +99,36 @@ def lonlat2gdf(df):
 
 	df['geometry'] = df.apply(lambda i: Point(*fn(i)), axis=1)
 	return gpd.GeoDataFrame(df, crs=4326)
+
+
+
+def get_retry(url, params, retries=10, timeout=None):
+	"""Requests any URL with GET params, with 10 retries.
+
+	Parameters
+	----------
+	url : string
+	params : dict
+		GET parameters as dictionary. Values may be lists.
+	retries : int
+	timeout : float, optional
+		Number of seconds to wait, may be less than 1.
+
+	Returns
+	-------
+	requests.Response object
+	"""
+	from erde import dprint
+	from time import sleep
+	import requests
+
+	for try_num in range(retries):
+		sleep(try_num)
+		try:
+			return requests.get(url, params=params, timeout=timeout)
+		except (requests.exceptions.ConnectionError, requests.exceptions.ConnectTimeout):
+			dprint('could not connect', end='')
+			if try_num == retries - 1:
+				raise
+
+			dprint('retrying', try_num)

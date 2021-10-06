@@ -1,6 +1,5 @@
 from concurrent.futures import ThreadPoolExecutor
 from erde import CONFIG, autocli, write_stream, utils
-from erde.op.route import get_retry
 from functools import partial
 from itertools import product
 
@@ -81,7 +80,7 @@ def _route_chunk(data, host_url, annotations='duration', retries=10, extra_param
 	encoded_params = urllib.parse.quote_plus(urllib.parse.urlencode(params))
 	# if we pass url and params separately to requests.get, it will make a malformed URL
 	encoded_url = f'{host_url}/table/v1/driving/polyline({encoded})?{encoded_params}'
-	resp = get_retry(encoded_url, {}, retries)
+	resp = utils.get_retry(encoded_url, {}, retries)
 
 	if resp.status_code != 200:
 		raise RuntimeError(f'OSRM server responded with {resp.status_code} code. Content: {resp.content}')

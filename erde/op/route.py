@@ -1,40 +1,10 @@
 import geopandas as gpd
-from erde import CONFIG, dprint, utils, read_stream, write_stream, autocli
+from erde import CONFIG, utils, read_stream, write_stream, autocli
 import sys
 
 
 ANNOTATIONS = 'duration,distance'
 
-
-def get_retry(url, params, retries=10, timeout=None):
-	"""Requests any URL with GET params, with 10 retries.
-
-	Parameters
-	----------
-	url : string
-	params : dict
-		GET parameters as dictionary. Values may be lists.
-	retries : int
-	timeout : float, optional
-		Number of seconds to wait, may be less than 1.
-
-	Returns
-	-------
-	requests.Response object
-	"""
-	from time import sleep
-	import requests
-
-	for try_num in range(retries):
-		sleep(try_num)
-		try:
-			return requests.get(url, params=params, timeout=timeout)
-		except (requests.exceptions.ConnectionError, requests.exceptions.ConnectTimeout):
-			dprint('could not connect', end='')
-			if try_num == retries - 1:
-				raise
-
-			dprint('retrying', try_num)
 
 def raw_route(route, mode, retries=10, **params):
 	"""Requests OSRM router and returns the raw response. Can be reused if you need response details.
@@ -69,7 +39,7 @@ def raw_route(route, mode, retries=10, **params):
 
 	coordinates = ';'.join(f'{c[0]},{c[1]}' for c in route.coords)
 	url = f'{host}/route/v1/driving/{coordinates}'
-	resp = get_retry(url, params, retries)
+	resp = utils.get_retry(url, params, retries)
 	return resp.json()
 
 
