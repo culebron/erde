@@ -1,9 +1,10 @@
+from datetime import datetime as dt, timedelta
 from erde import autocli
 from io import StringIO
 from rasterio.warp import reproject
-import numpy as np
 import boto3
 import geopandas as gpd
+import numpy as np
 import os.path
 import pandas as pd
 import rasterio as ri
@@ -12,7 +13,6 @@ import re
 import requests
 import sys
 import tempfile
-
 
 options = {'verbose': False}
 TMP_DIR = tempfile.gettempdir()
@@ -23,11 +23,13 @@ def vprint(*args, **kwargs):
 		print(*args, **kwargs)
 
 
-def get_tiles(geoms_df):
+def get_tiles(geoms_df, start_day, end_day):
+	start_day = start_day.strftime('%Y-%m-%dT00:00:00Z')
+	end_day = end_day.strftime('%Y-%m-%dT00:00:00Z')
 	headers = {'Accept':'application/json'}
 	params = {
 		'bbox': str(list(geoms_df.total_bounds)),
-		'time': '2020-07-01T00:00:00Z/2020-07-31T23:59:59Z',
+		'time': f'{start_day}/{end_day}',
 		'collection': 'sentinel-2-l1c',  # this option seems to be ignored, we filter collections later on
 		'limit': 100
 	}
@@ -35,9 +37,20 @@ def get_tiles(geoms_df):
 	vprint(f'Requesting tiles for geometries. Params: {params}')
 	resp = requests.get('https://sat-api.developmentseed.org/stac/search', params=params, headers=headers)
 
-	rj = resp.json()
+	try:
+		rj = resp.json()
+	except:
+		raise RuntimeError('Response is not JSON')
+
+	try:
+		if rj['meta']['found'] == 0:
+			return []
+	except KeyError:
+		raise RuntimeError('Wrong JSON response.')
+
 	# response info contains data polygon
 	# we still need to check geometry intersection, because we requested bbox instead
+
 	df = gpd.read_file(StringIO(resp.content.decode()))
 
 	# assets are another sub-dict, so let's attach it too
@@ -45,9 +58,10 @@ def get_tiles(geoms_df):
 	for k in assets_df:
 		df[k] = assets_df[k]
 
+	vprint(f'Found {len(df)} images.')
 	return df[
 		(df['collection'] == 'sentinel-2-l1c') &
-		(df['eo:cloud_cover'] < 50) &  # maybe not worth?
+		(df['eo:cloud_cover'] < 90) &  # maybe not worth?
 		(df['geometry'].intersects(geoms_df.geometry.unary_union))].sort_values('eo:cloud_cover')  # get low-cloudy first
 
 
@@ -170,15 +184,29 @@ def tile_stats(urls_dict, geom_row, keys):
 
 
 @autocli
-def main(geoms_df: gpd.GeoDataFrame, keys_path, date, verbose:bool=False):
+def main(geoms_df: gpd.GeoDataFrame, date, keys_path, days_span:int=14, verbose:bool=False):
+	"""Calculate NDVI for areas in geoms file for `date`.
+
+	- date: date, format YYYY-MM-DD (2021-07-31) for which to calculate the NDVI. If image is not available, will search backwards for 1 month.
+	- keys_path is a CSV generated in AWS panel, access credentials section.
+	"""
 	keys = read_keys(keys_path)
 	options['verbose'] = verbose
+	try:
+		end_day = dt.fromisoformat(date)
+	except ValueError:
+		print('Could not parse date. Use ISO format: 2021-07-31.')
+
+	start_day = end_day - timedelta(days=days_span)
 
 	for i in range(len(geoms_df)):
 		geom_row = geoms_df.iloc[i:i + 1]  # let's get row as df, to preserve useful to_crs and other properties
 		vprint(f'Searching for tiles for area #{i}')
 
-		tiles_df = get_tiles(geom_row)
+		tiles_df = get_tiles(geom_row, start_day, end_day)
+		if len(tiles_df) == 0:
+			print(f'No tiles or cloudless images for geometry {i}')
+
 		for img_num in range(len(tiles_df)):
 			#for img_num in [0]:
 			row = tiles_df.iloc[img_num].to_dict()
