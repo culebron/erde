@@ -11,7 +11,7 @@ example.TMP_DIR = '.'  # cropped images for the test_areas are in current folder
 start_day = datetime(2020, 7, 15)
 end_day = datetime(2020, 7, 15)
 
-with open('./resp.json') as f:
+with open('./data/resp.json') as f:
 	resp_json = json.load(f)
 
 def test_get_tiles():
@@ -33,3 +33,9 @@ def test_get_tiles():
 	m.return_value.content.decode.return_value = ''
 	with mock.patch('requests.get', side_effect=m), pytest.raises(RuntimeError):
 		example.get_tiles(areas, start_day, end_day)
+
+def test_read_keys():
+	assert example.read_keys('data/key1.csv') == ('123', '456')
+	assert example.read_keys('data/key2.csv') == ('abc', 'def')
+	with pytest.raises(RuntimeError):
+		example.read_keys('data/key3.csv')

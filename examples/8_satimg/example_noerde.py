@@ -1,5 +1,6 @@
+# This script is exactly the same as `example.py`, except it does not use `erde` package, and it's impossible to import it to other modules or notebooks.
+# Apart from that, it should run from CLI normally.
 from datetime import datetime as dt, timedelta
-from erde import autocli
 from io import StringIO
 from rasterio.warp import reproject
 import boto3
@@ -13,6 +14,7 @@ import re
 import requests
 import sys
 import tempfile
+import yaargh
 
 options = {'verbose': False}
 TMP_DIR = tempfile.gettempdir()
@@ -58,7 +60,7 @@ def get_tiles(geoms_df, start_day, end_day):
 	for k in assets_df:
 		df[k] = assets_df[k]
 
-	vprint(f'Found {len(df)} images.')
+	print(len(df))
 	return df[
 		(df['collection'] == 'sentinel-2-l1c') &
 		(df['eo:cloud_cover'] < 90) &  # maybe not worth?
@@ -73,14 +75,11 @@ def read_keys(path):
 	# we check both options
 
 	# format 1
-	try:
-		with open(path) as f:
-			keys = dict(l.strip().split('=') for l in f)
-	except (ValueError, KeyError):
-		pass
-	else:
-		if ('AWSAccessKeyId' in keys and 'AWSSecretKey' in keys):
-			return (keys['AWSAccessKeyId'], keys['AWSSecretKey'])
+	with open(path) as f:
+		keys = dict(l.strip().split('=') for l in f)
+
+	if ('AWSAccessKeyId' in keys and 'AWSSecretKey' in keys):
+		return (keys['AWSAccessKeyId'], keys['AWSSecretKey'])
 
 	# no, it wasn't format 1
 	# format 2:
@@ -186,11 +185,12 @@ def tile_stats(urls_dict, geom_row, keys):
 	}
 
 
-@autocli
+@yaargh.dispatch_command
 def main(geoms_df: gpd.GeoDataFrame, date, keys_path, days_span:int=14, verbose:bool=False):
 	"""Calculate NDVI for areas in geoms file for `date`.
 
 	- date: date, format YYYY-MM-DD (2021-07-31) for which to calculate the NDVI. If image is not available, will search backwards for 1 month.
+	- days_span: number of days to search backward for cloud-free images
 	- keys_path is a CSV generated in AWS panel, access credentials section.
 	"""
 	keys = read_keys(keys_path)
