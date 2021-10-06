@@ -18,6 +18,11 @@ Log into the control panel and generate a key for either your own user, or an IA
 
 Put the key in this folder.
 
+## Notebook
+
+Open the [notebook](
+Statistics%20used%20from%20notebook%20or%20other%20code.ipynb) in your local machine, run the cells.
+
 ## Test Run
 
 Running from system shell:
