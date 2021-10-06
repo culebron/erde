@@ -13,7 +13,9 @@ import requests
 import sys
 import tempfile
 
+
 options = {'verbose': False}
+TMP_DIR = tempfile.gettempdir()
 
 
 def vprint(*args, **kwargs):
@@ -88,7 +90,7 @@ def fetch_image(url, keys=None):
 		return requests.get(url).content
 
 	vprint(f'Downloading image from S3: {url}')
-	tmp_path = tempfile.gettempdir() + '/' + match.groupdict()['Key'].replace('/', '-')
+	tmp_path = TMP_DIR + '/' + match.groupdict()['Key'].replace('/', '-')
 	if os.path.exists(tmp_path):
 		vprint(f'Image was already cached in {tmp_path}')
 		return ri.open(tmp_path)
