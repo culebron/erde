@@ -87,7 +87,7 @@ def _respond(url, params=None, retries=None):
 
 @contextmanager
 def make_server():
-	with mock.patch('erde.op.table.get_retry', side_effect=_respond) as m, mock.patch.dict(table.CONFIG['routers'], {'foot': 'http://localhost:5001', 'local': 'http://localhost:5000'}):
+	with mock.patch('erde.utils.get_retry', side_effect=_respond) as m, mock.patch.dict(table.CONFIG['routers'], {'foot': 'http://localhost:5001', 'local': 'http://localhost:5000'}):
 		yield m
 
 
@@ -124,7 +124,7 @@ def test_response_errors():
 	m.return_value.json.return_value = {'message': 'Coordinates are invalid', 'code': 'InvalidOptions'}
 	m.return_value.content = str(m.return_value.json.return_value)
 
-	with mock.patch('erde.op.table.get_retry', m), pytest.raises(RuntimeError):
+	with mock.patch('erde.utils.get_retry', m), pytest.raises(RuntimeError):
 		list(table.table_route(pts, pts, 'local'))
 
 	# error: 500 error

@@ -8,8 +8,7 @@ The result function (`respond`) imitates the structure of the returned content, 
 The code is saved here to restore and be able to reuse it, for example, to make a module for GrahpHopper table service.
 """
 
-from erde import read_df
-from erde.op.route import get_retry
+from erde import read_df, utils
 from erde.op.table import table_route
 from unittest import mock
 import json
@@ -35,11 +34,11 @@ if __name__ == '__main__':
 	# I ran requests and checked responses[0] to see what the structure of the reply was.
 	responses = [None]
 	def capture_osrm_output(*args, **kwargs):
-		r = get_retry(*args, **kwargs)
+		r = utils.get_retry(*args, **kwargs)
 		responses[0] = r.json()
 		return r
 
-	with mock.patch('erde.op.table.get_retry', side_effect=capture_osrm_output) as mm:
+	with mock.patch('erde.utils.get_retry', side_effect=capture_osrm_output) as mm:
 		# here i called with a sample of houses and shops to make the response fit into a screen or two.
 		result_table = list(table_route(houses[:10], shops[:2], 'local', annotations='duration,distance', max_table_size=100000))
 
@@ -68,7 +67,7 @@ if __name__ == '__main__':
 		m.json.return_value = result
 		return m
 
-	with mock.patch('erde.op.route.get_retry', side_effect=respond):
+	with mock.patch('erde.utils.get_retry', side_effect=respond):
 		req_params = table_route(url)
 
 	print(req_params)

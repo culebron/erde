@@ -21,7 +21,7 @@ def test_get_retry():
 		for i in range(10):
 			url = f'http://localhost/{i}'
 			requested_urls.append(url)
-			route.get_retry(url, {})
+			utils.get_retry(url, {})
 
 	assert mm.call_count == 10
 	assert called_urls == requested_urls
@@ -40,7 +40,7 @@ def test_get_retry():
 
 	# 10 retries by default, should not raise exception
 	with mock.patch('requests.get', side_effect=err) as mm:
-		assert route.get_retry(url, {}) == ok
+		assert utils.get_retry(url, {}) == ok
 
 	assert mm.call_count == 3
 
@@ -48,7 +48,7 @@ def test_get_retry():
 	# connection timeout exhausts retries
 	with mock.patch('requests.get', side_effect=err) as mm:
 		with pytest.raises(requests.exceptions.ConnectionError):
-			route.get_retry(url, {}, retries=1)
+			utils.get_retry(url, {}, retries=1)
 
 
 resp1 = """{"code":"Ok","waypoints":[{"distance":0.128545,"location":[83.101985,54.830043],"name":""},{"distance":1.494989,"location":[83.103487,54.830639],"name":""}],"routes":[{"legs":[{"steps":[],"weight":11.49,"distance":133.5,"summary":"","duration":106.8}],"weight_name":"routability","geometry":"w~smImzezNCDEDGASWKQKUEO[}AGo@Ai@?Y?OMC","weight":11.49,"distance":133.5,"duration":106.8}]}"""
@@ -67,7 +67,7 @@ def _sample_data(raw_resp):
 	m = mock.Mock()
 	m.return_value.json.return_value = resp_json
 
-	with mock.patch('erde.op.route.get_retry', m):
+	with mock.patch('erde.utils.get_retry', m):
 		yield req_line, resp_json, m
 
 
@@ -136,7 +136,7 @@ def test_route_row():
 	# requests raises ConnectionTimeout after retries
 	# or some inner function raises an exception => raise it
 	for exc in (ConnectTimeout, ValueError):
-		with mock.patch('erde.op.route.get_retry', side_effect=exc), pytest.raises(exc):
+		with mock.patch('erde.utils.get_retry', side_effect=exc), pytest.raises(exc):
 			data = route.route_row(sample_line, 'http://localhost', overview='full', annotations=['nodes'])
 
 responses = (
