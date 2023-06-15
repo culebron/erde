@@ -40,5 +40,5 @@ def check_path_exists(path):
 	if not os.path.exists(path):  # immediately raise error to avoid crashing much later
 			raise FileNotFoundError(f'file {path} does not exist')
 
-from . import csv, gpkg, geojson, geojsonseq, postgres, shp, xls
-drivers = {'csv': csv.driver, 'gpkg': gpkg.driver, 'geojson': geojson.driver, 'geojsonl.json': geojsonseq.driver, 'postgres': postgres.driver, 'shp': shp.driver, 'xls': xls.driver}
+from . import csv, fgb, gpkg, geojson, geojsonseq, postgres, shp, xls
+drivers = {'csv': csv.driver, 'fgb': fgb.driver, 'gpkg': gpkg.driver, 'geojson': geojson.driver, 'geojsonl.json': geojsonseq.driver, 'postgres': postgres.driver, 'shp': shp.driver, 'xls': xls.driver}

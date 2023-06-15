@@ -104,7 +104,9 @@ class CsvWriter(FileWriterMixin, BaseWriter):
 	def _write_sync(self, df):
 		self._open_handler(df)
 		if 'geometry' in df:
-			df['geometry'] = df['geometry'].apply(shapely.wkt.dumps)
+			wkt = df['geometry'].apply(shapely.wkt.dumps)
+			df = pd.DataFrame(df)
+			df['geometry'] = wkt
 
 		self._handler.writerows(df.to_dict(orient='records'))
 		# df.to_csv(self._handler, header=False, index=False)
