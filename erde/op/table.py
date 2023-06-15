@@ -60,7 +60,7 @@ def _route_chunk(data, host_url, annotations='duration', retries=10, extra_param
 
 	# OSRM takes all points as one list, and then numbers of sources & dests in it
 	all_points = sources + destinations
-	encoded = encode_poly([(p.y, p.x) for p in all_points])
+	encoded = urllib.parse.quote_plus(encode_poly([(p.y, p.x) for p in all_points]))
 
 	# numerate sources  & dests. sources come first
 	source_numbers = ';'.join(map(str, range(sources_count)))
@@ -151,6 +151,7 @@ def table_route(sources, destinations, router, max_table_size=2_000, threads=10,
 
 	sources_indices = {i: v for i, v in enumerate(_index(sources))}
 	destinations_indices = {i: v for i, v in enumerate(_index(destinations))}
+
 	sources = _tolist(sources, 'sources')
 	destinations = _tolist(destinations, 'destinations')
 

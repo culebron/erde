@@ -84,13 +84,13 @@ def route_row(waypoints, mode, overview='simplified', alternatives=1, annotation
 
 		result = []
 		for alt, route in enumerate(data.get('routes', [])[:alternatives], start=1):
-
+			route_geom = route_line if overview in (False, 'false', 'False') else LineString(utils.decode_poly(route['geometry']))
 			route_result = {
 				**metadata,
 				'alternative': alt,
 				'duration': route['duration'],
 				'distance': route['distance'],
-				'geometry': LineString(utils.decode_poly(route['geometry']))
+				'geometry': route_geom
 			}
 
 			if overview == 'full' and 'nodes' in annotations:
@@ -116,11 +116,11 @@ def route_row(waypoints, mode, overview='simplified', alternatives=1, annotation
 
 
 @autocli
-def main(input_data: read_stream, mode, overview='full', annotations=ANNOTATIONS, alternatives:int=1, threads:int=10) -> write_stream:
+def main(input_data: read_stream, mode, overview='full', annotations=ANNOTATIONS, alternatives:int=1, threads:int=10, retries=10) -> write_stream:
 	import functools
 	import itertools
 
-	fn = functools.partial(route_row, mode=mode, overview=overview, annotations=annotations, alternatives=alternatives)
+	fn = functools.partial(route_row, mode=mode, overview=overview, annotations=annotations, alternatives=alternatives, retries=retries)
 	rows = (r for i, r in input_data.iterrows())
 	if threads == 1:
 		result = map(fn, rows)

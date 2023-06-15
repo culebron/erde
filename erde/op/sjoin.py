@@ -4,7 +4,7 @@ import geopandas as gpd
 def _sj(left_df, right_df, left_on, right_on, op, how):
 	left_tmp = _df_on(left_df, left_on, 'left')
 	right_tmp = _df_on(right_df, right_on, 'right')
-	return gpd.sjoin(left_tmp, right_tmp, op=op, how=how)
+	return gpd.sjoin(left_tmp, right_tmp, predicate=op, how=how)
 
 
 def sjfull(left_df, right_df, left_on='geometry', right_on='geometry', suffixes=('', '_right'), join='inner', op='intersects'):

@@ -101,7 +101,6 @@ def lonlat2gdf(df):
 	return gpd.GeoDataFrame(df, crs=4326)
 
 
-
 def get_retry(url, params, retries=10, timeout=None):
 	"""Requests any URL with GET params, with 10 retries.
 
@@ -122,7 +121,7 @@ def get_retry(url, params, retries=10, timeout=None):
 	from time import sleep
 	import requests
 
-	for try_num in range(retries):
+	for try_num in range(retries + 1):
 		sleep(try_num)
 		try:
 			return requests.get(url, params=params, timeout=timeout)
@@ -132,3 +131,30 @@ def get_retry(url, params, retries=10, timeout=None):
 				raise
 
 			dprint('retrying', try_num)
+
+
+def lookup(left_df, right_df, column_names, left_on, right_on, suffixes=('', '_right'), how='left'):
+
+	if isinstance(column_names, str):
+		column_names = [column_names]
+
+	def df_on(df, on_cols, side):
+		if isinstance(on_cols, pd.Series):
+			if not on_cols.index.equals(df.index):
+				raise ValueError(f'{side}_on is a series and it\'s index is not equal to {side}_df index')
+
+			return pd.DataFrame({'left_on': on_cols}), ['left_on']
+		elif isinstance(on_cols, str):
+			return df[[on_cols]], [on_cols]
+		return df[on_cols], on_cols
+
+	left_tmp, left_on_ = df_on(left_df, left_on, 'left')
+	right_tmp, right_on_ = df_on(right_df, right_on, 'left')
+
+	for k in column_names:
+		right_tmp[k] = right_df[k]
+
+	res = left_tmp.merge(right_tmp, left_on=left_on_, right_on=right_on_, how=how)
+	res2 = res.groupby(left_on_).agg({k: 'first' for k in column_names}).reset_index()
+	for k in column_names:
+		left_df[k] = res2
