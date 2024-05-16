@@ -12,6 +12,7 @@ import re
 FIONA_DRIVER = 'GPKG'
 PATH_REGEXP = r'^(?P<file_path>(?:.*/)?(?P<file_name>(?:.*/)?(?P<file_own_name>.*)\.(?P<extension>gpkg)))(?:\:(?P<layer_name>[a-z0-9_-]+))?$'
 
+
 class GpkgReader(BaseReader):
 	fiona_driver = FIONA_DRIVER
 	source_regexp = PATH_REGEXP
@@ -227,7 +228,7 @@ class GpkgDriver(BaseDriver):
 			if layer_name in fiona.listlayers(filepath):
 				fiona.remove(filepath, FIONA_DRIVER, layer_name)
 
-		df.to_file(filepath, driver=FIONA_DRIVER, encoding='utf-8', layer=layer_name)
+		df.to_file(filepath, driver=FIONA_DRIVER, encoding='utf-8', layer=layer_name, engine='pyogrio')
 
 
 driver = GpkgDriver

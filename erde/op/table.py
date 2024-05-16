@@ -1,4 +1,4 @@
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from erde import CONFIG, autocli, write_stream, utils
 from functools import partial
 from itertools import product
@@ -174,16 +174,20 @@ def table_route(sources, destinations, router, max_table_size=2_000, threads=10,
 
 	_route_partial = partial(_route_chunk, host_url=host_url, annotations=annotations, extra_params=extra_params)
 
-	with tqdm(total=total_rows * total_cols, desc='Table routing', disable=(not pbar)) as t, ThreadPoolExecutor(max_workers=threads) as tpe:
+	with tqdm(total=total_rows * total_cols, desc='Table routing', disable=(not pbar)) as t, ProcessPoolExecutor(max_workers=threads) as ppe:
 		combos = list(product(range(0, total_rows, rows), range(0, total_cols, cols)))
 		slices = ((sources[s:s + rows], destinations[d:d + cols], s, d) for s, d in combos)
 
 		# process/thread/an instance of executor
-		for df in tpe.map(_route_partial, slices):
-			df['source'] = df['source'].map(sources_indices)
-			df['destination'] = df['destination'].map(destinations_indices)
-			yield df
-			t.update(len(df))
+		jobs = {ppe.submit(_route_partial, s): s for s in slices}
+		for j in as_completed(jobs):
+			try:
+				df = j.result()
+			except Exception as exc:
+				print(f'generated an exception: {exc}')
+			else:
+				t.update(len(df))
+				yield df
 
 
 @autocli

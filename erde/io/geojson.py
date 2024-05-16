@@ -53,7 +53,7 @@ class GeoJsonDriver(GpkgDriver):
 		if os.path.exists(path):
 			os.unlink(path)
 
-		df.to_file(path, driver=driver, encoding='utf-8')
+		df.to_file(path, driver=driver, encoding='utf-8', engine='pyogrio')
 
 
 driver = GeoJsonDriver

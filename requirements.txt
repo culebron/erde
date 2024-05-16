@@ -3,8 +3,9 @@ geopandas
 ipdb
 matplotlib
 polyline
+pygeos --no-binary=pygeos
+pyogrio
 requests
+shapely --no-binary=shapely
 tqdm
 yaargh
-shapely --no-binary=shapely
-pygeos --no-binary=pygeos
